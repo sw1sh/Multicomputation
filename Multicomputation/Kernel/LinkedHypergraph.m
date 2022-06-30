@@ -9,10 +9,12 @@ PackageExport["IndexedTreeToLinkedHypergraph"]
 PackageExport["UniquifyIndexedTree"]
 PackageExport["LinkedHypergraphToIndexedTree"]
 
+PackageScope["ApplyHypergraphRules"]
+
 
 
 HypergraphToLinkedHypergraph[hg_] := Module[{perm, iso},
-	{perm, iso} = FindCanonicalHypergraphIsomorphism[hg, "IncludePermutation" -> True];
+	{perm, iso} = ResourceFunction["FindCanonicalHypergraphIsomorphism"][hg, "IncludePermutation" -> True];
 	Join[
 		MapThread[Join[{#3, #2}, #1] &, {Permute[hg /. iso, perm], Permute[hg, perm], Max[iso] + Range[Length[hg]]}],
 		{#, #} & /@ Range[Max[iso]]

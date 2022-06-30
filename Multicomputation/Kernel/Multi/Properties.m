@@ -14,8 +14,8 @@ MultiProp[multi_, "Properties"] := {
     "EvaluateOnce", "HoldEvaluateOnce",
     "MultiList",
     "ListEvaluate", "HoldListEvaluate",
-    (*"MultiListEvaluate","HoldMultiListEvaluate",
-    "MultiEvaluate","HoldMultiEvaluate",*)
+    "MultiListEvaluate","HoldMultiListEvaluate",
+    "MultiEvaluate","HoldMultiEvaluate",
     "Edges", "HoldEdges",
     "Graph", "HoldGraph"
 }

@@ -8,7 +8,7 @@ $WFR = {
     <|
         "Name" -> "MultiReplace",
         "ResourceType" -> "Function",
-        "FunctionLocation" -> CloudObject["https://www.wolframcloud.com/obj/nikm/Resources/4fb/4fb5e7ce-d67f-4b78-bdb1-bc0eabe8eabc/download/DefinitionData"],
+        (* "FunctionLocation" -> CloudObject["https://www.wolframcloud.com/obj/nikm/Resources/4fb/4fb5e7ce-d67f-4b78-bdb1-bc0eabe8eabc/download/DefinitionData"], *)
         "SymbolName" -> "FunctionRepository`$4fb5e7ced67f4b78bdb1bc0eabe8eabc`MultiReplace"
     |>,
     <|
@@ -26,7 +26,7 @@ $WFR = {
 }
 
 Scan[data |->
-    With[{sym = Symbol @ data["Name"], wfr = ResourceFunction[ResourceObject[data]]},
+    With[{sym = Symbol @ data["Name"], wfr = If[MissingQ[data["FunctionLocation"]], ResourceFunction[data["Name"]], ResourceFunction[ResourceObject[data]]]},
         sym[args___] := wfr[args];
         Options[sym] = Options[wfr];
         SetAttributes[sym, HoldAllComplete]
