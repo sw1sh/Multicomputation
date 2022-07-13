@@ -44,9 +44,10 @@ AddInitState[g_Graph, i_Integer : 0] := EdgeAdd[
 
 
 lineGraph[g_, opts : OptionsPattern[Graph]] := With[{
-    edges = DeleteDuplicates @ Catenate[(v |-> DirectedEdge[##, #1[[2]]] & @@@
-         Tuples[{Catenate[Cases[EdgeList[g], DirectedEdge[_, v, ___]]& /@ VertexInComponent[g, v, {1}]],
-         Catenate[Cases[EdgeList[g], DirectedEdge[v, __]]& /@ VertexOutComponent[g, v, {1}]]}]) /@ VertexList[g]
+    edges = DeleteDuplicates @ Catenate[(v |-> DirectedEdge @@@
+        Tuples[{
+            Cases[EdgeList[g], DirectedEdge[_, Verbatim[v], ___]],
+            Cases[EdgeList[g], DirectedEdge[Verbatim[v], __]]}]) /@ VertexList[g]
     ]
 },
     Graph[
@@ -59,6 +60,8 @@ lineGraph[g_, opts : OptionsPattern[Graph]] := With[{
     ]
 ]
 
+removeCycles[g_] := EdgeDelete[EdgeDelete[g, FindCycle[g, Infinity, All][[All, -1]]], _[x_, x_, ___]]
+
 Options[CausalGraph] = Options[Graph]
 
 CausalGraph[g_, type_String : "Graph", opts : OptionsPattern[]] := Enclose @ Module[{gg = g, lg, nodes, positions, events, root, links, repl},
@@ -66,7 +69,7 @@ CausalGraph[g_, type_String : "Graph", opts : OptionsPattern[]] := Enclose @ Mod
         Count[VertexInDegree[gg], 0] > 1,
         gg = AddInitState[gg]
     ];
-    gg = AddInitState[ToDirectedAcyclicGraph @ gg, -1];
+    gg = AddInitState[removeCycles[gg], -1];
     lg = IndexGraph @ lineGraph @ gg;
 	nodes = SortBy[First] @ TreeLevel[TreeMap[List, ConfirmBy[DirectedGraphTree[lg], TreeQ], All -> {"Data", "Position"}], All -> "Data"];
 	positions = Last /@ nodes;
@@ -83,7 +86,11 @@ CausalGraph[g_, type_String : "Graph", opts : OptionsPattern[]] := Enclose @ Mod
     events = MapAt[Map[Replace[repl]], events, {{All, 3, Key["Destroyed"]}, {All, 3, Key["Created"]}}];
 	AdjacencyGraph[
 		events,
-		SparseArray @ Outer[Boole[MatchQ[#2["TreePosition"], Append[#1["TreePosition"], __]] && IntersectingQ[#1["Created"], #2["Destroyed"]]] &, events[[All, 3]], events[[All, 3]]],
+		Outer[
+            Boole[MatchQ[#2["TreePosition"], Append[#1["TreePosition"], __]] && IntersectingQ[#1["Created"], #2["Destroyed"]]] &,
+            events[[All, 3]],
+            events[[All, 3]]
+        ],
 		FilterRules[{opts}, Options[Graph]],
 		VertexLabels -> v_ :> Tooltip[FromLinkedHypergraph[v[[2]], type],  v[[3]]],
 		GraphLayout -> "LayeredDigraphEmbedding",

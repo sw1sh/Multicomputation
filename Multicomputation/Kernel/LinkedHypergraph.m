@@ -8,8 +8,9 @@ PackageExport["CanonicalLinkedHypergraph"]
 PackageExport["IndexedTreeToLinkedHypergraph"]
 PackageExport["UniquifyIndexedTree"]
 PackageExport["LinkedHypergraphToIndexedTree"]
-
-PackageScope["ApplyHypergraphRules"]
+PackageExport["LinkedHypergraphRuleToPatternRule"]
+PackageExport["PatternRuleToMultiReplaceRule"]
+PackageExport["ApplyHypergraphRules"]
 
 
 
@@ -62,7 +63,12 @@ LinkedHypergraphToIndexedTree[hg : {{_, ___} ...}, opts : OptionsPattern[]] := W
 	Tree[linkedHypergraphToTree[First @ Complement[Keys[map], Catenate @ Values[map[[All, 2 ;;]]]], map], opts]
 ]
 
-UniquifyIndexedTree[tree_Tree] := TreeMapAt[MapAt[Sow[Unique[], "UniqueIndex"] &, {1}], tree, Catenate[Rest @ TreePosition[tree, #] & /@ Keys @ Select[Counts @ TreeLeaves[tree], # > 1 &]]]
+UniquifyIndexedTree[tree_Tree] :=
+	TreeMapAt[
+		MapAt[Sow[Unique[], "UniqueIndex"] &, {1}],
+		tree,
+		Catenate[Rest @ TreePosition[tree, #] & /@ Keys @ Select[Counts[TreeData /@ TreeLeaves[tree]], # > 1 &]]
+	]
 
 LinkedHypergraphToTree[hg : {{_, _, ___} ...}, opts : OptionsPattern[]] := TreeMap[Last] @ LinkedHypergraphToIndexedTree[hg, opts]
 
@@ -116,9 +122,10 @@ ToLinkedHypergraph[expr_, type_String : Automatic] := Which[
         }
     ],
 	!FreeQ[expr, _[___][___]],
-    TreeToLinkedHypergraph[TreeMap[Replace[Null -> Construct]] @ ExpressionTree[expr, "Atoms", Heads -> True]],
+	ConstructPatternToLinkedHypergraph[expr, _Pattern],
+    (* TreeToLinkedHypergraph[TreeMap[Replace[Null -> Construct]] @ ExpressionTree[expr, "Atoms", Heads -> True]], *)
     True,
-	TreeToLinkedHypergraph[ExpressionTree[expr]]
+	PatternToLinkedHypergraph[expr, _Pattern]
 ]
 
 ToLinkedHypergraph[expr_, patt_] := PatternToLinkedHypergraph[expr, patt]
@@ -147,7 +154,10 @@ FromLinkedHypergraph[hg : {{_, _, ___} ...}, type_String : "Graph", opts : Optio
 
 CanonicalHypergraphRule[rule : (lhs : {{__}...} -> {{__}...})] := Rule @@ TakeDrop[CanonicalHypergraph[List @@ rule, 1], Length[lhs]]
 
-LinkedHypergraphRuleToPatternRule[rule_] := Module[{leftLinks, rightLinks, newLinks, patts, leftMap, newMap, newRule},
+LinkedHypergraphRuleToPatternRule[rule_] := Module[{
+	leftLinks, rightLinks, leftPayloads, rightPayloads,
+	newLinks, newVars, patts, leftMap, newMap, newRule
+},
 	{leftLinks, rightLinks} = Union @ Flatten[{#[[All, ;; 1]], #[[All, 3 ;;]]}] & /@ List @@ rule;
 	newLinks = Complement[rightLinks, leftLinks];
     patts = Union @ Cases[rule[[1]], Verbatim[Pattern][s_, _] :> s, All];
@@ -160,11 +170,13 @@ LinkedHypergraphRuleToPatternRule[rule_] := Module[{leftLinks, rightLinks, newLi
                 MapAt[Replace[p_Pattern :> (p /. Blank -> BlankNullSequence)], {1, All, 2}] @
                 (* MapAt[Replace[s : Alternatives @@ patts :> Hold[Splice @ Prepend[First[{s}]] @ Table[Unique[], Length[{s}] - 1]]], {2, All, 2}] *)
                 rule;
+	{leftPayloads, rightPayloads} = Union @ #[[All, 2]] & /@ List @@ rule;
+	newVars = Complement[Cases[rightPayloads, p_Pattern :> First[p], All], Cases[leftPayloads, p_Pattern :> First[p], All]];
 	With[{
-		newVars = Values[newMap],
+		newSymbols = Join[Values[newMap], newVars],
 		rhs = Extract[newRule, {2}, Hold]
 	},
-		Function[Null, ReplacePart[newRule, {2} :> Module[newVars, #]], HoldFirst] @@ rhs
+		Function[Null, ReplacePart[newRule, {2} :> Module[newSymbols, #]], HoldFirst] @@ rhs
 	]
 ]
 
@@ -226,7 +238,7 @@ HypergraphMulti[init_, rules_] := With[{
 },
     Multi[
 		ToLinkedHypergraph /@ wrap[init],
-		x_ :> ApplyHypergraphRules[x, multReplaceRules],
+		\[FormalX]_ :> ApplyHypergraphRules[\[FormalX], multReplaceRules],
 		{1}
 	]
 ]
