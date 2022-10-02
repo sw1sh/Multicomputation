@@ -5,8 +5,8 @@ PacletObject[
     "Creator" -> "Wolfram Research",
     "License" -> "MIT",
     "PublisherID" -> "Wolfram",
-    "Version" -> "0.0.1",
-    "WolframVersion" -> "13.0+",
+    "Version" -> "0.0.3",
+    "WolframVersion" -> "13.1+",
     "Extensions" -> {
       {
         "Kernel",
@@ -22,7 +22,8 @@ PacletObject[
           "Wolfram`Multicomputation`Multi",
           "Wolfram`Multicomputation`MultiReplace",
           "Wolfram`Multicomputation`MultiEvaluate",
-          "Wolfram`Multicomputation`MultiStringReplace"
+          "Wolfram`Multicomputation`MultiStringReplace",
+          "Wolfram`Multicomputation`MultiwayObject"
         }
       },
       {"Documentation", "Language" -> "English"}

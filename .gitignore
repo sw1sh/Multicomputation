@@ -1,0 +1,6 @@
+
+Multicomputation/build/
+
+*.paclet
+
+.DS_Store

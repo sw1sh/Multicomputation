@@ -123,7 +123,7 @@ Multi[expr_, rules : {},
 With[{
     multi = If[
         ListQ[Unevaluated @ expr],
-        MapAt[HoldApply[Multi, Sequence @@ FilterRules[{opts}, Options[MultiEvaluate]]], Unevaluated @ expr, ListElementPositions[Unevaluated @ expr]],
+        MapAt[HoldApply[Multi, Sequence @@ FilterRules[{opts}, Options[MultiEvaluate]]], Unevaluated @ expr, ElementPositions[Unevaluated @ expr, List]],
         Multi[Unevaluated @ expr, Sequence @@ FilterRules[{opts}, Options[MultiEvaluate]]]
     ]
 },
@@ -147,9 +147,9 @@ Multi /: (f : Except[Multi])[left___, HoldPattern[Multi[alts_List]], right___] :
         |>],
         Multi[<|
             "Expression" :> f[left, MultiPlaceholder, right] "Values" -> <|{i} :> alts|>|>]
-    ] /; ! (MatchQ[Unevaluated @ f, _Symbol] && MemberQ[Attributes[f], SequenceHold]) &&
+    ] /; !SequenceHoldQ[Unevaluated[f[left, MultiPlaceholder, right]]] &&
         !AtomQ[Unevaluated @ f[left, MultiPlaceholder, right]] &&
-        !MemberQ[HoldPosition[f[left, MultiPlaceholder, right]], i]
+        !HoldPositionQ[Unevaluated[f[left, MultiPlaceholder, right]], i]
 ]
 
 
@@ -190,9 +190,9 @@ With[{
             ],
             Multi[<|newData, "Expression" :> f[left, subExpr, right]|>]
         ]
-    ]] /; !(MatchQ[Unevaluated @ f, _Symbol] && MemberQ[Attributes[f], SequenceHold]) &&
+    ]] /; !SequenceHoldQ[Unevaluated[f[left, subExpr, right]]] &&
         !AtomQ[Unevaluated @ f[left, subExpr, right]] &&
-        !MemberQ[HoldPosition[f[left, subExpr, right]], i]
+        !HoldPositionQ[Unevaluated[f[left, subExpr, right]], i]
 ]
 
 Multi[alts_List][args___] := With[{ph = MultiPlaceholder[Unique[]]},

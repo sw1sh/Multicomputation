@@ -2,6 +2,8 @@ Package["Wolfram`Multicomputation`"]
 
 PackageScope["wrap"]
 PackageScope["HoldPosition"]
+PackageScope["HoldPositionQ"]
+PackageScope["SequenceHoldQ"]
 PackageScope["HeadDepth"]
 PackageScope["HoldApply"]
 PackageScope["HoldMapApply"]
@@ -14,20 +16,29 @@ PackageScope["MultiPlaceholder"]
 
 wrap[expr_, head_ : List] := Replace[expr, x : Except[_head] :> head[x]]
 
-HoldPosition[sym_Symbol[args___]] := With[{attrs = Attributes[sym], len = Length @ Unevaluated @ {args}},
+HoldPositionFromAttributes[attrs_, len_] :=
     Which[
+        MemberQ[attrs, HoldAll | HoldAllComplete] || ContainsAll[attrs, {HoldFirst, HoldRest}],
+        Range @ len,
         MemberQ[attrs, HoldFirst],
         {1},
         MemberQ[attrs, HoldRest],
         Range[2, len],
-        MemberQ[attrs, HoldAll | HoldAllComplete],
-        Range @ len,
         True,
         {}
     ]
-]
 
-SetAttributes[HoldPosition, HoldAllComplete]
+HoldPosition[sym_Symbol[args___]] := HoldPositionFromAttributes[Attributes[sym], Length[HoldComplete[args]]]
+HoldPosition[Verbatim[Function][_, _, attrs___][args___]] := HoldPositionFromAttributes[Flatten[{attrs}], Length[HoldComplete[args]]]
+HoldPosition[_[___]] := {}
+HoldPosition[___] := Missing["Position"]
+
+HoldPositionQ[expr_, i_] := With[{pos = HoldPosition[Unevaluated[expr]]}, MissingQ[pos] || MemberQ[pos, i]]
+
+
+SequenceHoldQ[sym_Symbol[___]] := MemberQ[Attributes[sym], SequenceHold]
+SequenceHoldQ[Verbatim[Function][_, _, attrs___][args___]] := MemberQ[attrs, SequenceHold]
+SequenceHoldQ[_] := False
 
 
 HeadDepth[expr_, head_ : List] := If[

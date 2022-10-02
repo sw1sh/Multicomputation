@@ -44,7 +44,7 @@ MultiProp[multi_, "Positions"] := Replace[{{pos : {_Integer ...}, __} :> pos, po
     Join[Keys @ multi["Values"], Keys @ multi["Matches"]]
 
 
-MultiProp[multi_, "Size"] := Length@multi["Keys"]
+MultiProp[multi_, "Size"] := Length @ multi["Keys"]
 
 MultiProp[multi_, "ValueCount"] := Times @@ Replace[Function[Null, Length @ Unevaluated @ #, HoldFirst] /@ multi["Values"], <||> -> {0}]
 
@@ -206,8 +206,8 @@ MultiProp[multi_, "MultiList"] := With[{
                 {v, k},
                 With[{newData = <|
                     multi["Data"],
-                    "Values" -> KeyMap[Drop[#, 1] &] @ KeySelect[multi["Values"], Take[#, 1] == k &],
-                    "Matches" -> KeyMap[MapAt[Drop[#, 1] &, {1}]] @ KeySelect[multi["Matches"], Take[First @ #, 1] == k &]
+                    "Values" -> KeyMap[Drop[#, UpTo[1]] &] @ KeySelect[multi["Values"], Take[#, UpTo[1]] == k &],
+                    "Matches" -> KeyMap[MapAt[Drop[#, UpTo[1]] &, {1}]] @ KeySelect[multi["Matches"], Take[First[#], UpTo[1]] == k &]
                     |>
                 },
                     With[{data = <|newData, "Expression" :> v|>},
@@ -269,7 +269,7 @@ If[
     MatchQ[multi["HoldExpression"], _[_head]],
     Module[{i = 1},
         ReleaseHold @ ResourceFunction["MapAtEvaluate"][
-            Function[Null, {MapAt[Prepend[i++], #["Keys"], {All, 1}], #["EvaluateListOnce"]}, HoldAllComplete],
+            Function[Null, {If[Length[#] > 0, MapAt[Prepend[i++], #, {All, 1}], #] &[#["Keys"]], #["EvaluateListOnce"]}, HoldAllComplete],
             multi["MultiList"],
             {1, All}
         ]
@@ -281,10 +281,12 @@ If[
 MultiProp[multi_, "HoldListEvaluateWithKeys"] := With[{head = multi["ReplaceHead"]},
 If[
     MatchQ[multi["HoldExpression"], _[_head]],
-    ReleaseHold @ ResourceFunction["MapAtEvaluate"][
-        Function[Null, {#["Keys"], #["HoldEvaluateListOnce"]}, HoldAllComplete],
-        multi["MultiList"],
-        {1, All}
+    Module[{i = 1},
+        ReleaseHold @ ResourceFunction["MapAtEvaluate"][
+            Function[Null, {If[Length[#] > 0, MapAt[Prepend[i++], #, {All, 1}], #] &[#["Keys"]], #["HoldEvaluateListOnce"]}, HoldAllComplete],
+            multi["MultiList"],
+            {1, All}
+        ]
     ],
     {{multi["Keys"], multi["HoldEvaluateListOnce"]}}
 ]
@@ -384,40 +386,54 @@ MultiProp[multi_, "HoldEdges", lvl_Integer : 1] := With[{
     Catenate @ MapThread[{elem, events} |-> DirectedEdge[elem, Sequence @@ Reverse @ #] & /@ Flatten @ events, {expr, multi["HoldEvents", lvl]}]
 ]
 
-MultiProp[multi_, prop : "Graph" | "HoldGraph", steps_Integer : 1, lvl_Integer : 2, opts : OptionsPattern[Graph]] :=
-Graph[
-    DeleteCases[Except[_DirectedEdge]] @ Flatten @ Reap[
-        Nest[
-            Function[
-                With[{
-                    edges = Sow[DeleteCases[DirectedEdge[_, _, _Missing]] @ ReleaseHold[#][If[prop === "Graph", "Edges", "HoldEdges"], lvl]]
-                },
-                    If[ Length @ edges > 0,
-                        Hold[
-                            Evaluate @ If[
-                                prop === "Graph",
-                                Multi[#, multi["AllReplaceArguments"]] &,
-                                Function[
-                                    Null,
-                                    Multi[Unevaluated @ {##}, multi["AllReplaceArguments"]],
-                                    HoldAll
-                                ] @@ Flatten[HoldForm @@ #] &] @ DeleteDuplicates @ edges[[All, 2]]
-                        ],
-                        #
-                    ]
+MultiProp[multi_, "Branches", lvl_Integer : 1] := multi["Edges", lvl][[All, 2]]
+MultiProp[multi_, "HoldBranches", lvl_Integer : 1] := multi["HoldEdges", lvl][[All, 2]]
+
+MultiProp[multi_, "BranchPairs", lvl_Integer : 1] := Catenate[Tuples[#, 2] & /@ multi["Branches", lvl]]
+MultiProp[multi_, "HoldBranchPairs", lvl_Integer : 1] := Catenate[Tuples[#, 2] & /@ multi["HoldBranches", lvl]]
+
+MultiProp[multi_, prop : "Foliations" | "HoldFoliations", steps_Integer : 1, lvl_Integer : 2, f_ : Identity] := Module[{counts = <||>},
+    {NestList[
+        Function[
+            Block[{
+                eventOutputCounts = Counts[f /@ Catenate[(Flatten /@ ReleaseHold[#][If[prop === "Foliations", "Events", "HoldEvents"], lvl])[[All, All, 2]]]],
+                newOutputs
+            },
+                newOutputs = Complement[Keys[eventOutputCounts], Keys[counts]];
+                counts = Merge[{counts, eventOutputCounts}, Total];
+                If[ Length @ newOutputs > 0,
+                    Hold[
+                        Evaluate @ If[
+                            prop === "Foliations",
+                            Multi[#, multi["AllReplaceArguments"]] &,
+                            Function[
+                                Null,
+                                Multi[Unevaluated @ {##}, multi["AllReplaceArguments"]],
+                                HoldAll
+                            ] @@ Flatten[HoldForm @@ #] &] @ newOutputs
+                    ],
+                    #
                 ]
-            ],
-            Hold @ multi,
-            steps
-        ]
-    ][[2]],
-    opts,
-    VertexLabels -> Placed[Automatic, Tooltip]
+            ]
+        ],
+        Hold[multi],
+        steps
+    ],
+    counts
+    }
 ]
 
+MultiProp[multi_, prop : "Graph", n_Integer : 1, opts___] := MultiGraph[multi, n, 2, opts]
+MultiProp[multi_, prop : "HoldGraph", n_Integer : 1, opts___] := MultiGraph[multi, n, 2, "Hold" -> True, opts]
 
 MultiProp[multi_, "RematchRules"] := With[{expr = Unevaluated @@ multi["HoldExpression"]}, Multi[expr, multi["AllReplaceArguments"]]]
 
 
-MultiProp[multi_, "CausalGraph", n_Integer : 1, opts___] := CausalGraph[multi["Graph", n, 2], opts]
+MultiProp[multi_, "CausalGraph", n_Integer : 1, opts___] := CausalGraph[multi["Graph", n], opts]
+
+MultiProp[multi_, "EvolutionCausalGraph", n_Integer : 1, opts___] := EvolutionCausalGraph[multi["CausalGraph", n], opts]
+
+MultiProp[multi_, "BranchialGraph", n_Integer : 1, opts___] := BranchialGraph[multi["Graph", n], opts]
+
+MultiProp[multi_, "CausalBranchialGraph", n_Integer : 1, opts___] := CausalBranchialGraph[multi["CausalGraph", n], opts]
 
