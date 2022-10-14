@@ -11,6 +11,7 @@ PackageScope["ApplyHold"]
 PackageScope["OwnValueHead"]
 PackageScope["ElementPositions"]
 PackageScope["MultiPlaceholder"]
+PackageScope["PatternHead"]
 
 
 
@@ -82,3 +83,12 @@ MultiPlaceholder[n_] := (
     MultiPlaceholder[n]
 )
 
+
+PatternHead = Pattern |
+	Blank | BlankSequence | BlankNullSequence |
+	HoldPattern | Verbatim |
+	Alternatives | Except |
+	PatternSequence | OrderlessPatternSequence | Repeated |
+	Longest | Shortest |
+	PatternTest | Condition |
+	Optional | OptionsPattern | KeyValuePattern | IgnoringInactive;

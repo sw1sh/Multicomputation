@@ -389,47 +389,54 @@ MultiProp[multi_, "HoldEdges", lvl_Integer : 1] := With[{
 MultiProp[multi_, "Branches", lvl_Integer : 1] := multi["Edges", lvl][[All, 2]]
 MultiProp[multi_, "HoldBranches", lvl_Integer : 1] := multi["HoldEdges", lvl][[All, 2]]
 
-MultiProp[multi_, "BranchPairs", lvl_Integer : 1] := Catenate[Tuples[#, 2] & /@ multi["Branches", lvl]]
-MultiProp[multi_, "HoldBranchPairs", lvl_Integer : 1] := Catenate[Tuples[#, 2] & /@ multi["HoldBranches", lvl]]
+MultiProp[multi_, "BranchPairs", lvl_Integer : 1] := Catenate[Subsets[#, {2}] & /@ multi["Branches", lvl]]
+MultiProp[multi_, "HoldBranchPairs", lvl_Integer : 1] := Catenate[Subsets[#, {2}] & /@ multi["HoldBranches", lvl]]
 
 MultiProp[multi_, prop : "Foliations" | "HoldFoliations", steps_Integer : 1, lvl_Integer : 2, f_ : Identity] := Module[{counts = <||>},
     {NestList[
         Function[
             Block[{
-                eventOutputCounts = Counts[f /@ Catenate[(Flatten /@ ReleaseHold[#][If[prop === "Foliations", "Events", "HoldEvents"], lvl])[[All, All, 2]]]],
+                eventOutputs = Map[f, (Flatten /@ ReleaseHold[#[[1]]][If[prop === "Foliations", "Events", "HoldEvents"], lvl])[[All, All, 2]], {2}],
+                eventOutputCounts,
                 newOutputs
             },
+                eventOutputCounts = Counts[Catenate @ eventOutputs];
                 newOutputs = Complement[Keys[eventOutputCounts], Keys[counts]];
                 counts = Merge[{counts, eventOutputCounts}, Total];
-                If[ Length @ newOutputs > 0,
-                    Hold[
-                        Evaluate @ If[
-                            prop === "Foliations",
-                            Multi[#, multi["AllReplaceArguments"]] &,
-                            Function[
-                                Null,
-                                Multi[Unevaluated @ {##}, multi["AllReplaceArguments"]],
-                                HoldAll
-                            ] @@ Flatten[HoldForm @@ #] &] @ newOutputs
+                {
+                    If[ Length @ newOutputs > 0,
+                        Hold[
+                            Evaluate @ If[
+                                prop === "Foliations",
+                                Multi[#, multi["AllReplaceArguments"]] &,
+                                Function[
+                                    Null,
+                                    Multi[Unevaluated @ {##}, multi["AllReplaceArguments"]],
+                                    HoldAll
+                                ] @@ Flatten[HoldForm @@ #] &] @ newOutputs
+                        ],
+                        #
                     ],
-                    #
-                ]
+                    eventOutputs
+                }
             ]
         ],
-        Hold[multi],
+        {Hold[multi], {}},
         steps
     ],
     counts
     }
 ]
 
-MultiProp[multi_, prop : "Graph", n_Integer : 1, opts___] := MultiGraph[multi, n, 2, opts]
-MultiProp[multi_, prop : "HoldGraph", n_Integer : 1, opts___] := MultiGraph[multi, n, 2, "Hold" -> True, opts]
+MultiProp[multi_, prop : "Graph", n_Integer : 1, opts___] := StatesGraph[multi, n, 2, opts]
+MultiProp[multi_, prop : "HoldGraph", n_Integer : 1, opts___] := StatesGraph[multi, n, 2, "Hold" -> True, opts]
 
 MultiProp[multi_, "RematchRules"] := With[{expr = Unevaluated @@ multi["HoldExpression"]}, Multi[expr, multi["AllReplaceArguments"]]]
 
 
 MultiProp[multi_, "CausalGraph", n_Integer : 1, opts___] := CausalGraph[multi["Graph", n], opts]
+
+MultiProp[multi_, "TokenEventGraph", n_Integer : 1, opts___] := MultiTokenEventGraph[multi["CausalGraph", n], opts]
 
 MultiProp[multi_, "EvolutionCausalGraph", n_Integer : 1, opts___] := EvolutionCausalGraph[multi["CausalGraph", n], opts]
 

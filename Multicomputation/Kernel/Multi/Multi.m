@@ -1,3 +1,5 @@
+(* ::Package:: *)
+
 Package["Wolfram`Multicomputation`"]
 
 PackageExport["Multi"]
@@ -146,7 +148,7 @@ Multi /: (f : Except[Multi])[left___, HoldPattern[Multi[alts_List]], right___] :
             "Values" -> <|{i} :> alts|>
         |>],
         Multi[<|
-            "Expression" :> f[left, MultiPlaceholder, right] "Values" -> <|{i} :> alts|>|>]
+            "Expression" :> f[left, MultiPlaceholder, right], "Values" -> <|{i} :> alts|>|>]
     ] /; !SequenceHoldQ[Unevaluated[f[left, MultiPlaceholder, right]]] &&
         !AtomQ[Unevaluated @ f[left, MultiPlaceholder, right]] &&
         !HoldPositionQ[Unevaluated[f[left, MultiPlaceholder, right]], i]
