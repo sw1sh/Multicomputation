@@ -84,7 +84,7 @@ Block[{g},
             2
         ],
         FilterRules[{opts}, Options[Graph]],
-        VertexLabels -> Placed[Automatic, Tooltip],
+        VertexLabels -> v_ :> Placed[HoldForm[v], Tooltip],
         VertexShapeFunction -> (Tooltip[$StateVertexShapeFunction[#1, FromLinkedHypergraph[#2, type], #3], #2] &),
         VertexSize -> If[type === "Hypergraph", 64, Automatic],
         GraphLayout -> "LayeredDigraphEmbedding",
@@ -309,7 +309,7 @@ With[{type = m["Type"]},
         "IncludeInitialEvent" -> False,
         "IncludeInitialState" -> False,
         VertexLabels -> {
-            v_ :> Placed[v, Tooltip],
+            v_ :> Placed[HoldForm[v], Tooltip],
             DirectedEdge[_, _, tag_] :> Placed[tag, Tooltip]
         },
         VertexShapeFunction -> {
