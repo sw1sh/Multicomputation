@@ -49,7 +49,9 @@ AddInitState[g_Graph, i_Integer : 0] := EdgeAdd[
     g,
     MapIndexed[
         If[ MatchQ[#1, {_, _Integer}],
-            DirectedEdge[{{{i, Missing[]}}, i}, #1, {{}, "InitState", None, <|"Destroyed" -> {i}, "Created" -> #1[[1, All, 1]], "Rule" -> 0, "Position" -> {}, "Step" -> i + 1|>}],
+            With[{l = #1[[1, 1, 1]]},
+                DirectedEdge[{{{l, Missing[]}}, #1}, #1, {{}, "InitState", None, <|"Destroyed" -> {l}, "Created" -> #1[[1, All, 1]], "Rule" -> 0, "Position" -> {}, "Step" -> i + 1|>}]
+            ],
             DirectedEdge[{{i, Missing[]}}, #1, {{}, "InitState", None, <|"Destroyed" -> {i}, "Created" -> #1[[All, 1]], "Rule" -> 0, "Position" -> {}, "Step" -> i + 1|>}]
         ] &,
         Pick[VertexList[g], Thread[VertexInDegree[g] == 0]]
