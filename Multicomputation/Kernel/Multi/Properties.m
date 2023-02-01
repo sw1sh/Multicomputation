@@ -87,7 +87,7 @@ MultiProp[multi_, "HoldListValues"] := With[{expr = Unevaluated @@ multi["HoldEx
                 MatchQ[#1, {_, "Rule", _}],
                 #2,
                 True,
-                Function[x, ReplaceList[HoldForm @ x, MapAt[HoldForm, Unevaluated@#2, {All, All}]], HoldAllComplete] @@ 
+                Function[x, ReplaceList[HoldForm @ x, MapAt[HoldForm, Unevaluated[#2], {All, All}]], HoldAllComplete] @@
                 First @ Extract[expr, {First @ #1}, HoldComplete]
             ],
             HoldAll

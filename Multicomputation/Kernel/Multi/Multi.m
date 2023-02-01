@@ -102,6 +102,7 @@ With[{
             multiExpr,
             Unevaluated @ rules,
             Replace[arg, Automatic -> Join[If[ListQ[multiExpr], {{All}}, {{}}], Append[All] /@ Position[multiExpr, _Not | _And | _Or, All, Heads -> False]]],
+            head,
             FilterRules[{opts}, Options[MultiReplace]],
             Heads -> False,
             Method -> "Substitution",

@@ -67,9 +67,12 @@ OwnValueHead[sym_Symbol] := With[{values = OwnValues[sym]},
 SetAttributes[OwnValueHead, HoldFirst]
 
 
-ElementPositions[expr_, head_Symbol : List] := Catenate @ MapIndexed[
-   Function[Null, If[MatchQ[Unevaluated @ #1, _head], Prepend[First @ #2] /@ ElementPositions[Unevaluated @ #1, head], {#2}], HoldFirst],
-   Unevaluated @ expr
+ElementPositions[expr_, head_Symbol : List] := List @@ Flatten[
+    MapIndexed[
+        Function[Null, If[MatchQ[Unevaluated @ #1, _head], Prepend[First @ #2] /@ ElementPositions[Unevaluated @ #1, head], {#2}], HoldFirst],
+        Unevaluated @ expr
+    ],
+    1
 ]
 ElementPositions[_] := {}
 

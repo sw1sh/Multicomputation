@@ -1,19 +1,19 @@
 Package["Wolfram`Multicomputation`"]
 
-PackageExport["MultiwayObjectQ"]
-PackageExport["MultiwayObject"]
+PackageExport["MultiwaySystemQ"]
+PackageExport["MultiwaySystem"]
 
 
 
-MultiwayObjectQ[MultiwayObject[_Multi, _String]] := True
-MultiwayObjectQ[___] := False
+MultiwaySystemQ[MultiwaySystem[_Multi, _String]] := True
+MultiwaySystemQ[___] := False
 
 
-Options[MultiwayObject] = Join[{Method -> Automatic}, Options[HypergraphMulti], Options[WolframModelMulti], Options[StringMulti]]
+Options[MultiwaySystem] = Join[{Method -> Automatic}, Options[HypergraphMulti], Options[WolframModelMulti], Options[StringMulti]]
 
-MultiwayObject[rules_, opts : OptionsPattern[]] := MultiwayObject[rules, FirstCase[Unevaluated[rules], (Rule | RuleDelayed)[lhs_, _] :> {lhs}, All], opts]
+MultiwaySystem[rules_, opts : OptionsPattern[]] := MultiwaySystem[rules, FirstCase[Unevaluated[rules], (Rule | RuleDelayed)[lhs_, _] :> {lhs}, All], opts]
 
-m : MultiwayObject[rules_, init_, opts : OptionsPattern[]] /; ! MultiwayObjectQ[Unevaluated[m]] := Enclose @ Block[{
+m : MultiwaySystem[rules_, init_, opts : OptionsPattern[]] /; ! MultiwaySystemQ[Unevaluated[m]] := Enclose @ Block[{
     type = First[ConfirmBy[MultiwayType /@ wrap[rules], Apply[Equal]]],
     method
 },
@@ -23,23 +23,23 @@ m : MultiwayObject[rules_, init_, opts : OptionsPattern[]] /; ! MultiwayObjectQ[
         "String" -> StringMulti,
         _ -> HypergraphMulti
     }];
-    MultiwayObject[
+    MultiwaySystem[
         Evaluate[method[init, rules, FilterRules[{opts}, Options[method]]]],
         type
     ]
 ]
 
-SetAttributes[MultiwayObject, HoldFirst]
+SetAttributes[MultiwaySystem, HoldFirst]
 
 
-MultiwayObjectProp[_, "Properties"] := {
+MultiwaySystemProp[_, "Properties"] := {
     "Properties", "Multi", "Type", "StatesGraph", "CausalGraph", "BranchialGraph",
     "EvolutionCausalGraph", "EvolutionEventsGraph", "CausalBranchialGraph", "TokenEventGraph"
 }
 
-MultiwayObjectProp[HoldPattern[MultiwayObject[multi_, _]], "Multi"] := multi
+MultiwaySystemProp[HoldPattern[MultiwaySystem[multi_, _]], "Multi"] := multi
 
-MultiwayObjectProp[HoldPattern[MultiwayObject[_, type_]], "Type"] := type
+MultiwaySystemProp[HoldPattern[MultiwaySystem[_, type_]], "Type"] := type
 
 
 StateShape[hg : {{__}...}, size_ : Automatic] := ResourceFunction["WolframModelPlot"][hg, ImageSize -> size, PlotRangePadding -> 0]
@@ -60,7 +60,7 @@ $StateVertexShapeFunction = Function[Inset[
 ]
 
 
-MultiwayObjectProp[m_, "Graph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] := With[{type = m["Type"]},
+MultiwaySystemProp[m_, "Graph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] := With[{type = m["Type"]},
 Block[{g},
     g = m["Multi"]["Graph", n,
         opts,
@@ -74,7 +74,7 @@ Block[{g},
     g
 ]]
 
-MultiwayObjectProp[m_, "StatesGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] :=
+MultiwaySystemProp[m_, "StatesGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] :=
 With[{type = m["Type"]},
 Block[{g},
     g = Graph[
@@ -192,7 +192,7 @@ EventShapeFunction[type_] := Switch[
     Function[Replace[#2, event : DirectedEdge[from_, to_, tag_] :> Inset[StatusArea[DefaultEventShape[event, type], tag], #1, {0, 0}]]]
 ]
 
-MultiwayObjectProp[m_, "CausalGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] := With[{type = m["Type"]},
+MultiwaySystemProp[m_, "CausalGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] := With[{type = m["Type"]},
 Block[{g, stateCanonicalFunction},
     g = m["Multi"]["CausalGraph", n,
         FilterRules[{opts}, Options[CausalGraph]],
@@ -204,7 +204,7 @@ Block[{g, stateCanonicalFunction},
         PerformanceGoal -> "Quality"
     ];
     g = canonicalizeEvents[g, type, FilterRules[{opts}, Options[canonicalizeEvents]]];
-    stateCanonicalFunction = Replace[OptionValue[{opts}, "CanonicalStateFunction"], {
+    stateCanonicalFunction = Replace[OptionValue[canonicalizeStates, FilterRules[{opts}, Options[canonicalizeStates]], "CanonicalStateFunction"], {
         Automatic -> Function[FromLinkedHypergraph[#, type]],
         "Canonical" -> CanonicalLinkedHypergraph,
         Full -> Function[FromLinkedHypergraph[CanonicalLinkedHypergraph[#], type]],
@@ -213,7 +213,7 @@ Block[{g, stateCanonicalFunction},
     VertexReplace[g, DirectedEdge[from_, to_, tag___] :> DirectedEdge[stateCanonicalFunction[from], stateCanonicalFunction[to], tag]]
 ]]
 
-MultiwayObjectProp[m_, "TokenEventGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] := With[{type = m["Type"]},
+MultiwaySystemProp[m_, "TokenEventGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] := With[{type = m["Type"]},
 Block[{g},
     g = m["Multi"]["TokenEventGraph", n,
         FilterRules[{opts}, Options[MultiTokenEventGraph]],
@@ -312,7 +312,7 @@ canonicalizeEvents[g_, type_, opts : OptionsPattern[]] := With[{
     ]
 ]
 
-MultiwayObjectProp[
+MultiwaySystemProp[
     m_, "EvolutionCausalGraph", n : _Integer ? Positive : 1,
     opts : OptionsPattern[Join[{"CanonicalStateFunction" -> None, "CanonicalEventFunction" -> None}, Options[EvolutionCausalGraph]]]
 ] :=
@@ -340,17 +340,17 @@ With[{type = m["Type"]},
 ]
 ]
 
-MultiwayObjectProp[m_, "EvolutionEventsGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] :=
+MultiwaySystemProp[m_, "EvolutionEventsGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] :=
     EdgeDelete[m["EvolutionCausalGraph", n, opts], DirectedEdge[_DirectedEdge, _DirectedEdge, ___]]
 
-MultiwayObjectProp[m_, "CausalBranchialGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] :=
+MultiwaySystemProp[m_, "CausalBranchialGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] :=
     canonicalizeEvents[
         CausalBranchialGraph[m["CausalGraph", n, "CanonicalEventFunction" -> None, opts], n, FilterRules[{opts}, Options[CausalBranchialGraph]]],
         m["Type"],
         FilterRules[{opts}, Options[canonicalizeEvents]]
     ]
 
-MultiwayObjectProp[m_, "BranchialGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] := With[{type = m["Type"]},
+MultiwaySystemProp[m_, "BranchialGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] := With[{type = m["Type"]},
 Block[{g},
     g = Graph[
         UndirectedEdge @@@ ReleaseHold[m["Multi"]["Foliations", n - 1][[1, -1, 1]]]["BranchPairs"],
@@ -363,19 +363,19 @@ Block[{g},
     g
 ]]
 
-MultiwayObjectProp[m_, prop_String, opts___] /; StringEndsQ[prop, "GraphStructure"] :=
+MultiwaySystemProp[m_, prop_String, opts___] /; StringEndsQ[prop, "GraphStructure"] :=
     m[StringDelete[prop, "Structure"], opts, VertexShapeFunction -> Automatic, VertexSize -> Automatic]
 
-MultiwayObjectProp[m_, args___] := m["Multi"][args]
+MultiwaySystemProp[m_, args___] := m["Multi"][args]
 
-m_MultiwayObject[args___] /; MultiwayObjectQ[m] := MultiwayObjectProp[m, args]
+m_MultiwaySystem[args___] /; MultiwaySystemQ[m] := MultiwaySystemProp[m, args]
 
 
-MakeBoxes[mobj_MultiwayObject, form_] := With[{
+MakeBoxes[mobj_MultiwaySystem, form_] := With[{
     icon = ResourceFunction["WolframModelPlot"][{{9, 5}, {6, 5}, {8, 5}, {1, 2}, {1, 5}, {4, 8, 4}, {1, 3, 8}, {9, 8, 10}, {4, 7, 3}, {4, 9, 10}}]
 },
     BoxForm`ArrangeSummaryBox[
-        "MultiwayObject",
+        "MultiwaySystem",
         mobj,
         icon,
         {{mobj["Type"]}},

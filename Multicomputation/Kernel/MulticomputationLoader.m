@@ -14,7 +14,7 @@ PacletManager`Package`loadWolframLanguageCode[
     "AutoUpdate" -> False,
     "AutoloadSymbols" -> {
         "Wolfram`Multicomputation`Multi",
-        "Wolfram`Multicomputation`MultiwayObject"
+        "Wolfram`Multicomputation`MultiwaySystem"
     },
     "HiddenImports" -> {}
 ];
