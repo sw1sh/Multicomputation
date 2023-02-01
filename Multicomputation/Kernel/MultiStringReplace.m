@@ -45,8 +45,8 @@ ApplyStringRules[hg_ ? LinkedHypergraphQ, rule_] := With[{rules = wrap[rule]},
                 ]
             ];
             <|
-                "Destroyed" -> hg[[pos, 1]],
-                "Created" -> created,
+                "Input" -> hg[[pos, 1]],
+                "Output" -> created,
                 "Rule" -> ruleId,
                 "Position" -> List /@ pos
             |> -> Insert[Delete[hg, List /@ pos], Splice @ Thread[{created, Characters[rhs], Append[Rest[created], If[Length[hg] > end, hg[[end + 1, 1]], 0]]}], start]

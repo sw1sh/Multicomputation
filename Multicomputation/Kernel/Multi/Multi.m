@@ -80,6 +80,9 @@ With[{
         MatchQ[Hold[expr], Hold[_Multi]],
         expr,
 
+        MatchQ[Unevaluated @ expr, head[head[]]],
+        Multi[<|"Expression" :> head[]|>],
+
         MatchQ[Unevaluated @ expr, _head],
         MapAt[
             HoldApply[Multi, Sequence @@ FilterRules[{opts}, Options[MultiEvaluate]]],

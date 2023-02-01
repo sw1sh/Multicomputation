@@ -396,7 +396,7 @@ MultiProp[multi_, prop : "Foliations" | "HoldFoliations", steps_Integer : 1, lvl
     {NestList[
         Function[
             Block[{
-                eventOutputs = Map[f, (Flatten /@ ReleaseHold[#[[1]]][If[prop === "Foliations", "Events", "HoldEvents"], lvl])[[All, All, 2]], {2}],
+                eventOutputs = DeleteCases[{} | {{}}] @ Map[f, (Flatten /@ ReleaseHold[#[[1]]][If[prop === "Foliations", "Events", "HoldEvents"], lvl])[[All, All, 2]], {2}],
                 eventOutputCounts,
                 newOutputs
             },
@@ -415,7 +415,7 @@ MultiProp[multi_, prop : "Foliations" | "HoldFoliations", steps_Integer : 1, lvl
                                     HoldAll
                                 ] @@ Flatten[HoldForm @@ #] &] @ newOutputs
                         ],
-                        #
+                        #[[1]]
                     ],
                     eventOutputs
                 }
@@ -436,9 +436,15 @@ MultiProp[multi_, "RematchRules"] := With[{expr = Unevaluated @@ multi["HoldExpr
 
 MultiProp[multi_, "CausalGraph", n_Integer : 1, opts___] := CausalGraph[multi["Graph", n], opts]
 
-MultiProp[multi_, "TokenEventGraph", n_Integer : 1, opts___] := MultiTokenEventGraph[multi["CausalGraph", n], opts]
+MultiProp[multi_, "TokenEventGraph", n_Integer : 1, opts___] := MultiTokenEventGraph[
+    multi["CausalGraph", n, FilterRules[{opts}, Options[CausalGraph]]],
+    FilterRules[{opts}, Options[MultiTokenEventGraph]]
+]
 
-MultiProp[multi_, "EvolutionCausalGraph", n_Integer : 1, opts___] := EvolutionCausalGraph[multi["CausalGraph", n], opts]
+MultiProp[multi_, "EvolutionCausalGraph", n_Integer : 1, opts___] := EvolutionCausalGraph[
+    multi["CausalGraph", n, FilterRules[{opts}, Options[CausalGraph]]],
+    FilterRules[{opts}, Options[EvolutionCausalGraph]]
+]
 
 MultiProp[multi_, "BranchialGraph", n_Integer : 1, opts___] := BranchialGraph[multi["Graph", n], opts]
 

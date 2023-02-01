@@ -24,11 +24,39 @@ PackageExport["LinkedHypergraphToRootTree"]
 LinkedHypergraphQ[{{_Integer | _Symbol, _, (_Integer | _Symbol)...}...}] := True
 LinkedHypergraphQ[___] := False
 
+
+Options[HypergraphToLinkedHypergraph] = {"Permute" -> True}
 HypergraphToLinkedHypergraph[hg_] := Module[{perm, iso},
 	{perm, iso} = ResourceFunction["FindCanonicalHypergraphIsomorphism"][hg, "IncludePermutation" -> True];
 	Join[
-		MapThread[Join[{#3, None}, #1] &, {Permute[hg /. iso, perm], Permute[hg, perm], Max[iso] + Range[Length[hg]]}]
+		MapThread[Join[{#2, None}, #1] &,
+			{
+				If[	TrueQ[OptionValue["Permute"]],
+					Permute[hg /. iso, perm],
+					hg /. iso, Max[iso]
+				],
+				Max[iso] + Range[Length[hg]]
+			}
+		]
 	]
+]
+
+HypergraphRuleToLinkedHypergraphRule[lhs_ -> rhs_] := Module[{perm, iso, newLhs, newRhs},
+	{perm, iso} = ResourceFunction["FindCanonicalHypergraphIsomorphism"][Join[lhs, rhs], "IncludePermutation" -> True];
+	{lhsPerm, rhsPerm} = FindPermutation /@ TakeDrop[PermutationList[perm, Length[lhs] + Length[rhs]], Length[lhs]];
+	newLhs = Join[
+		MapThread[Join[{#2, None}, #1] &, {
+			Permute[lhs /. iso, lhsPerm],
+			Max[iso] + Range[Length[lhs]]
+		}]
+	];
+	newRhs = Join[
+		MapThread[Join[{#2, None}, #1] &, {
+			Permute[rhs /. iso, rhsPerm],
+			Max[iso] + Range[Length[rhs]]
+		}]
+	];
+	newLhs -> newRhs
 ]
 
 LinkedHypergraphToHypergraph[lhg_, OptionsPattern[]] := Select[lhg, Length[#] > 2 &][[All, 3 ;;]]
@@ -151,7 +179,7 @@ ToLinkedHypergraph[expr_, autoType : _String | Automatic : Automatic] := With[{t
 			"List",
 			ListToLinkedHypergraph[expr[[1]]] -> ListToLinkedHypergraph[expr[[2]]],
 			"Hypergraph",
-			Rule @@ TakeDrop[HypergraphToLinkedHypergraph[Join @@ expr], Length[expr[[1]]]],
+			HypergraphRuleToLinkedHypergraphRule[expr],
 			"ConstructExpression",
 			Rule @@ {
 				ConstructPatternToLinkedHypergraph[expr[[1]], PatternHead[___]],
@@ -266,8 +294,8 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_, _]] := With[{
 	]
 ]
 
-
-ApplyHypergraphRules[x_, rules_, hypergraphQ_ : True] := With[{rhsLengths = Extract[#, {2, 1, 2, 1}, Length] & /@ rules},
+Options[ApplyHypergraphRules] = {"Hypergraph" -> True, "MultiReplaceOptions" -> {"Mode" -> "OrderlessSubsets"}}
+ApplyHypergraphRules[x_, rules_, OptionsPattern[]] := With[{rhsLengths = Extract[#, {2, 1, 2, 1}, Length] & /@ rules},
     Association @ KeyValueMap[
         Block[{
             state = First[#2],
@@ -276,7 +304,7 @@ ApplyHypergraphRules[x_, rules_, hypergraphQ_ : True] := With[{rhsLengths = Extr
             created
         },
             created = Take[state, MapAt[UpTo, #1[[2, 1, 1]] + {0, rhsLengths[[#1[[1]]]] - 1}, {2}]][[All, 1]];
-			If[	! TrueQ[hypergraphQ],
+			If[	! TrueQ[OptionValue["Hypergraph"]],
 				{state, uniqueLinks} = Reap[
 					IndexedTreeToLinkedHypergraph @ UniquifyIndexedTree @ LinkedHypergraphToIndexedTree[state],
 					"UniqueIndex"
@@ -289,15 +317,15 @@ ApplyHypergraphRules[x_, rules_, hypergraphQ_ : True] := With[{rhsLengths = Extr
 				]
 			];
             <|
-                "Destroyed" -> destroyed, "Created" -> created, "Rule" -> #1[[1]], "Position" -> #1[[2]]
+                "Input" -> destroyed, "Output" -> created, "Rule" -> #1[[1]], "Position" -> #1[[2]]
             |> -> state
         ] &,
-       	MultiReplace[x, rules, {1}, "Mode" -> "Subsets"
-		]
+       	MultiReplace[x, rules, {1}, OptionValue["MultiReplaceOptions"]]
     ]
 ]
 
-HypergraphMulti[init_, rule_, autoType_ : Automatic] := Enclose @ Block[{
+Options[HypergraphMulti] = Options[ApplyHypergraphRules]
+HypergraphMulti[init_, rule_, autoType: Except[OptionsPattern[]] : Automatic, opts : OptionsPattern[]] := Enclose @ Block[{
 	rules = wrap[rule], type
 },
 	type = Replace[autoType, Automatic -> First[ConfirmBy[MultiwayType /@ rules, Apply[Equal], "All rules must have the same type."]]];
@@ -307,7 +335,7 @@ HypergraphMulti[init_, rule_, autoType_ : Automatic] := Enclose @ Block[{
 	},
 		Multi[
 			ToLinkedHypergraph[#, type] & /@ wrap[init],
-			RuleDelayed @@ Hold[\[FormalCapitalH]_, ApplyHypergraphRules[\[FormalCapitalH], multReplaceRules, hypergraphQ]],
+			RuleDelayed @@ Hold[\[FormalCapitalH]_, ApplyHypergraphRules[\[FormalCapitalH], multReplaceRules, opts, "Hypergraph" -> hypergraphQ]],
 			{1}
 		]
 	]
@@ -315,21 +343,21 @@ HypergraphMulti[init_, rule_, autoType_ : Automatic] := Enclose @ Block[{
 
 
 ApplyWolframModelRules[x_, rules_] := Module[{
-    eo = ResourceFunction["WolframModel"][<|"PatternRules" -> rules|>, x, 1],
+    eo = ResourceFunction["WolframModel"][<|"PatternRules" -> rules|>, x, 1, "EventSelectionFunction" -> None],
     edges
 },
     edges = eo["AllEventsEdgesList"];
     Association[
         With[{state = Join[Delete[x, List /@ #[[2, 1]]], edges[[#[[2, 2]]]]]},
             <|
-                "Destroyed" -> edges[[#[[2, 1]]]][[All, 1]],
-                "Created" -> edges[[#[[2, 2]]]][[All, 1]]
+                "Input" -> edges[[#[[2, 1]]]][[All, 1]],
+                "Output" -> edges[[#[[2, 2]]]][[All, 1]]
             |> -> state
         ] & /@ eo["AllEventsList"]
     ]
 ]
 
-WolframModelMulti[init_, rules_] := With[{
+WolframModelMulti[init_, rules_, OptionsPattern[]] := With[{
 	patternRules = Map[ToLinkedHypergraph /* LinkedHypergraphRuleToPatternRule, wrap[rules]]
 },
     Multi[
@@ -339,7 +367,7 @@ WolframModelMulti[init_, rules_] := With[{
 	]
 ]
 
-StringMulti[init_, rule_] := With[{
+StringMulti[init_, rule_, OptionsPattern[]] := With[{
 	rules = wrap[rule]
 },
 	Multi[
