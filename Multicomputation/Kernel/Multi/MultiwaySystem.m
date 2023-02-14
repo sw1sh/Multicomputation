@@ -9,22 +9,22 @@ MultiwaySystemQ[MultiwaySystem[_Multi, _String]] := True
 MultiwaySystemQ[___] := False
 
 
-Options[MultiwaySystem] = Join[{Method -> Automatic}, Options[HypergraphMulti], Options[WolframModelMulti], Options[StringMulti]]
+Options[MultiwaySystem] = {Method -> Automatic}
 
 MultiwaySystem[rules_, opts : OptionsPattern[]] := MultiwaySystem[rules, FirstCase[Unevaluated[rules], (Rule | RuleDelayed)[lhs_, _] :> {lhs}, All], opts]
 
-m : MultiwaySystem[rules_, init_, opts : OptionsPattern[]] /; ! MultiwaySystemQ[Unevaluated[m]] := Enclose @ Block[{
+m : MultiwaySystem[rules_, init_, OptionsPattern[]] /; ! MultiwaySystemQ[Unevaluated[m]] := Enclose @ Block[{
     type = First[ConfirmBy[MultiwayType /@ wrap[rules], Apply[Equal]]],
-    method
+    method, methodOpts
 },
-    method = Replace[OptionValue[Method], {
-        Automatic -> Switch[type, "Hypergraph", WolframModelMulti, "String", StringMulti, _, HypergraphMulti],
-        "Hypergraph" -> WolframModelMulti,
-        "String" -> StringMulti,
-        _ -> HypergraphMulti
+    {method, methodOpts} = Replace[OptionValue[Method], {
+        Automatic -> {Switch[type, "Hypergraph", WolframModelMulti, "String", StringMulti, _, HypergraphMulti], {}},
+        "Hypergraph" | {"Hypergraph", opts : OptionsPattern[]} -> {WolframModelMulti, {opts}},
+        "String" | {"String", opts : OptionsPattern[]} -> {StringMulti, {opts}},
+        {_, opts : OptionsPattern[]} | _ -> {HypergraphMulti, {opts}}
     }];
     MultiwaySystem[
-        Evaluate[method[init, rules, FilterRules[{opts}, Options[method]]]],
+        Evaluate[method[init, rules, methodOpts]],
         type
     ]
 ]
@@ -33,7 +33,7 @@ SetAttributes[MultiwaySystem, HoldFirst]
 
 
 MultiwaySystemProp[_, "Properties"] := {
-    "Properties", "Multi", "Type", "StatesGraph", "CausalGraph", "BranchialGraph",
+    "Properties", "Multi", "Type", "Graph", "EvolutionGraph", "StatesGraph", "CausalGraph", "BranchialGraph", "AllStatesBranchialGraph",
     "EvolutionCausalGraph", "EvolutionEventsGraph", "CausalBranchialGraph", "TokenEventGraph"
 }
 
@@ -60,7 +60,7 @@ $StateVertexShapeFunction = Function[Inset[
 ]
 
 
-MultiwaySystemProp[m_, "Graph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] := With[{type = m["Type"]},
+MultiwaySystemProp[m_, "Graph" | "EvolutionGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] := With[{type = m["Type"]},
 Block[{g},
     g = m["Multi"]["Graph", n,
         opts,
@@ -70,15 +70,15 @@ Block[{g},
         GraphLayout -> "LayeredDigraphEmbedding",
         PerformanceGoal -> "Quality"
     ];
-    g = canonicalizeStates[g, type, FilterRules[{opts}, Options[canonicalizeStates]], "CanonicalStateFunction" -> Automatic];
+    g = canonicalizeStates[g, type, FilterRules[{opts}, Options[canonicalizeStates]]];
     g
 ]]
 
-MultiwaySystemProp[m_, "StatesGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] :=
-With[{type = m["Type"]},
+MultiwaySystemProp[m_, "StatesGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] := With[{type = m["Type"]},
 Block[{g},
     g = Graph[
-        Graph @ Flatten[
+        m["Expression"],
+        Flatten[
             If[ #2[[2]] === {},
                 {},
                 MapThread[{from, to} |-> (DirectedEdge[from, #] & /@ to), {ReleaseHold[#1[[1]]]["Expression"], #2[[2]]}, 1]
@@ -87,7 +87,7 @@ Block[{g},
             2
         ],
         FilterRules[{opts}, Options[Graph]],
-        VertexLabels -> v_ :> Placed[HoldForm[v], Tooltip],
+        VertexLabels -> Placed[Automatic, Tooltip],
         VertexShapeFunction -> (Tooltip[$StateVertexShapeFunction[#1, FromLinkedHypergraph[#2, type], #3], #2] &),
         VertexSize -> If[type === "Hypergraph", 64, Automatic],
         GraphLayout -> "LayeredDigraphEmbedding",
@@ -108,6 +108,25 @@ StringSubstitutionEventShape[DirectedEdge[from_, to_, tag_]] := Framed[
                     }, Alignment -> Center, Spacings -> 0]
             ],
             vs : {{__}...} :> FromLinkedHypergraph[vs, "String"]
+        ],
+        Black
+    ],
+    Background -> Directive[Opacity[0.7], Hue[0.14, 0.34, 1]],
+    FrameMargins -> {{2, 2}, {0, 0}},
+    FrameStyle -> Directive[Opacity[0.4], Hue[0.09, 1, 0.91]]
+]
+
+ListSubstitutionEventShape[DirectedEdge[from_, to_, tag_]] := Framed[
+    Style[
+        SequenceReplace[
+            SequenceReplace[from,
+                vs : {{Alternatives @@ tag["Input"], ___}...} :>
+                    Column[{
+                        Row[FromLinkedHypergraph[vs, "List"], ","],
+                        Row[FromLinkedHypergraph[Cases[to, {Alternatives @@ tag["Output"], ___}], "List"], ","]
+                    }, Alignment -> Center, Spacings -> 0]
+            ],
+            vs : {{__}...} :> Row[FromLinkedHypergraph[vs, "List"], ","]
         ],
         Black
     ],
@@ -138,17 +157,6 @@ Framed[
 ]
 ]
 
-DefaultEventShape[DirectedEdge[from_, to_, tag_], type_] := Style[
-    Column[{
-            FromLinkedHypergraph[from, type],
-            FromLinkedHypergraph[to, type]
-        },
-        Alignment -> Center, Spacings -> 0
-    ],
-    Background -> Directive[Opacity[0.7], Hue[0.14, 0.34, 1]],
-    FrameMargins -> {{2, 2}, {0, 0}},
-    FrameStyle -> Directive[Opacity[0.4], Hue[0.09, 1, 0.91]]
-]
 
 DefaultEventShape[DirectedEdge[from_, to_, tag_], type_] := Framed[
     Style[
@@ -186,6 +194,8 @@ EventShapeFunction[type_] := Switch[
     type,
     "String",
     Function[Replace[#2, event : DirectedEdge[from_, to_, tag_] :> Inset[StatusArea[StringSubstitutionEventShape[event], tag], #1, {0, 0}]]],
+    "List",
+    Function[Replace[#2, event : DirectedEdge[from_, to_, tag_] :> Inset[StatusArea[ListSubstitutionEventShape[event], tag], #1, {0, 0}]]],
     "Hypergraph",
     Function[Replace[#2, event : DirectedEdge[from_, to_, tag_] :> Inset[StatusArea[WolframModelEventShape[event, #3], tag], #1, {0, 0}]]],
     _,
@@ -193,7 +203,7 @@ EventShapeFunction[type_] := Switch[
 ]
 
 MultiwaySystemProp[m_, "CausalGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] := With[{type = m["Type"]},
-Block[{g, stateCanonicalFunction},
+Block[{g},
     g = m["Multi"]["CausalGraph", n,
         FilterRules[{opts}, Options[CausalGraph]],
         "IncludeInitialEvent" -> False,
@@ -203,14 +213,18 @@ Block[{g, stateCanonicalFunction},
         GraphLayout -> "LayeredDigraphEmbedding",
         PerformanceGoal -> "Quality"
     ];
+    If[VertexCount[g] == 0, Return[g]];
     g = canonicalizeEvents[g, type, FilterRules[{opts}, Options[canonicalizeEvents]]];
-    stateCanonicalFunction = Replace[OptionValue[canonicalizeStates, FilterRules[{opts}, Options[canonicalizeStates]], "CanonicalStateFunction"], {
-        Automatic -> Function[FromLinkedHypergraph[#, type]],
-        "Canonical" -> CanonicalLinkedHypergraph,
-        Full -> Function[FromLinkedHypergraph[CanonicalLinkedHypergraph[#], type]],
-        _ -> Identity
-    }];
-    VertexReplace[g, DirectedEdge[from_, to_, tag___] :> DirectedEdge[stateCanonicalFunction[from], stateCanonicalFunction[to], tag]]
+    With[{
+        stateCanonicalFunction = Replace[OptionValue[canonicalizeStates, FilterRules[{opts}, Options[canonicalizeStates]], "CanonicalStateFunction"], {
+            Automatic -> Function[FromLinkedHypergraph[#, type]],
+            "Canonical" -> CanonicalLinkedHypergraph,
+            Full -> Function[FromLinkedHypergraph[CanonicalLinkedHypergraph[#], type]],
+            _ -> Identity
+        }]
+    },
+        VertexReplace[g, DirectedEdge[from_, to_, tag___] :> DirectedEdge[stateCanonicalFunction[from], stateCanonicalFunction[to], tag]]
+    ]
 ]]
 
 MultiwaySystemProp[m_, "TokenEventGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] := With[{type = m["Type"]},
@@ -249,7 +263,7 @@ Options[canonicalizeStates] = Join[{"CanonicalStateFunction" -> None}, Options[G
 canonicalizeStates[g_, type_, opts : OptionsPattern[]] := With[{
     stateCanonicalFunction = Replace[OptionValue["CanonicalStateFunction"], {
         Automatic -> Function[FromLinkedHypergraph[#, type]],
-        "Canonical" -> CanonicalLinkedHypergraph,
+        "Canonical" | "CanonicalHypergraph" -> CanonicalLinkedHypergraph,
         Full -> Function[FromLinkedHypergraph[CanonicalLinkedHypergraph[#], type]]
     }]
 },
@@ -350,10 +364,13 @@ MultiwaySystemProp[m_, "CausalBranchialGraph", n : _Integer ? Positive : 1, opts
         FilterRules[{opts}, Options[canonicalizeEvents]]
     ]
 
-MultiwaySystemProp[m_, "BranchialGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] := With[{type = m["Type"]},
+MultiwaySystemProp[m_, prop : "BranchialGraph" | "AllStatesBranchialGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] := With[{type = m["Type"]},
 Block[{g},
     g = Graph[
-        UndirectedEdge @@@ ReleaseHold[m["Multi"]["Foliations", n - 1][[1, -1, 1]]]["BranchPairs"],
+        If[ prop === "BranchialGraph",
+            UndirectedEdge @@@ ReleaseHold[m["Multi"]["Foliations", n - 1][[1, -1, 1]]]["BranchPairs"],
+            Catenate[UndirectedEdge @@@ ReleaseHold[#]["BranchPairs"] & /@ m["Multi"]["Foliations", n - 1][[1, All, 1]]]
+        ],
         EdgeStyle -> ResourceFunction["WolframPhysicsProjectStyleData"]["BranchialGraph"]["EdgeStyle"],
         VertexShapeFunction -> Function[Tooltip[$StateVertexShapeFunction[#1, FromLinkedHypergraph[#2, type], #3], #2]],
         VertexSize -> If[type === "Hypergraph", 64, Automatic],
@@ -362,6 +379,14 @@ Block[{g},
     g = canonicalizeStates[g, type, FilterRules[{opts}, Options[canonicalizeStates]], "CanonicalStateFunction" -> Automatic];
     g
 ]]
+
+MultiwaySystemProp[m_, "CausalStatesGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] :=
+    CausalStatesGraph[
+        m["CausalGraphStructure", n,
+            "IncludeInitialEvent" -> True, "CanonicalEventFunction" -> Full,
+            "EdgeDeduplication" -> True, "TransitiveReduction" -> False
+        ], FilterRules[{opts}, Options[CausalStatesGraph]]
+    ]
 
 MultiwaySystemProp[m_, prop_String, opts___] /; StringEndsQ[prop, "GraphStructure"] :=
     m[StringDelete[prop, "Structure"], opts, VertexShapeFunction -> Automatic, VertexSize -> Automatic]
@@ -379,7 +404,7 @@ MakeBoxes[mobj_MultiwaySystem, form_] := With[{
         mobj,
         icon,
         {{mobj["Type"]}},
-        {{}},
+        {{mobj["HoldExpression"]}},
         form
     ]
 ]

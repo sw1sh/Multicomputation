@@ -1,11 +1,12 @@
 Package["Wolfram`Multicomputation`"]
 
-PackageExport["StatesGraph"]
+PackageExport["EvolutionGraph"]
 PackageExport["BranchialGraph"]
 PackageExport["CausalGraph"]
 PackageExport["EvolutionCausalGraph"]
 PackageExport["CausalBranchialGraph"]
 PackageExport["MultiTokenEventGraph"]
+PackageExport["CausalStatesGraph"]
 
 PackageExport["DirectedGraphTree"]
 PackageExport["ToDirectedAcyclicGraph"]
@@ -54,9 +55,9 @@ AddInitState[g_Graph, i_Integer : 0] := EdgeAdd[
     MapIndexed[
         If[ MatchQ[#1, {_, _Integer}],
             With[{l = #1[[1, 1, 1]]},
-                DirectedEdge[{{{l, Missing[]}}, #1}, #1, {{}, "InitState", None, <|"Input" -> {l}, "Output" -> #1[[1, All, 1]], "Rule" -> 0, "Position" -> {}, "Step" -> i + 1|>}]
+                DirectedEdge[{{{l, Missing[i]}}, #1}, #1, {{}, "InitState", None, <|"Input" -> {l}, "Output" -> #1[[1, All, 1]], "Rule" -> 0, "Position" -> {}, "Step" -> i + 1|>}]
             ],
-            DirectedEdge[{{i, Missing[]}}, #1, {{}, "InitState", None, <|"Input" -> {i}, "Output" -> #1[[All, 1]], "Rule" -> 0, "Position" -> {}, "Step" -> i + 1|>}]
+            DirectedEdge[{{i, Missing[i]}}, #1, {{}, "InitState", None, <|"Input" -> {i}, "Output" -> #1[[All, 1]], "Rule" -> 0, "Position" -> {}, "Step" -> i + 1|>}]
         ] &,
         Pick[VertexList[g], Thread[VertexInDegree[g] == 0]]
     ]
@@ -83,12 +84,13 @@ lineGraph[g_, opts : OptionsPattern[Graph]] := With[{
 removeCycles[g_] := EdgeDelete[EdgeDelete[g, FindCycle[g, Infinity, All][[All, -1]]], _[x_, x_, ___]]
 
 
-Options[StatesGraph] := Join[{"Hold" -> False}, Options[Graph]]
+Options[EvolutionGraph] := Join[{"Hold" -> False}, Options[Graph]]
 
-SetAttributes[StatesGraph, HoldFirst]
+SetAttributes[EvolutionGraph, HoldFirst]
 
-StatesGraph[multi_Multi, steps_Integer : 1, lvl_Integer : 2, opts : OptionsPattern[]] := Block[{i = 0, holdQ = TrueQ[OptionValue["Hold"]]},
+EvolutionGraph[multi_Multi, steps_Integer : 1, lvl_Integer : 2, opts : OptionsPattern[]] := Block[{i = 0, holdQ = TrueQ[OptionValue["Hold"]]},
     Graph[
+        multi["Expression"],
         DeleteCases[Except[_DirectedEdge]] @ Flatten @ Reap[
             Nest[
                 Function[
@@ -120,7 +122,7 @@ StatesGraph[multi_Multi, steps_Integer : 1, lvl_Integer : 2, opts : OptionsPatte
                 steps
             ]
         ][[2]],
-        opts,
+        FilterRules[{opts}, Options[Graph]],
         VertexLabels -> Placed[Automatic, Tooltip]
     ]
 ]
@@ -189,7 +191,7 @@ EvolutionCausalGraph[cg_Graph, type : _String | None : None, opts : OptionsPatte
     states = Union[VertexList[cg][[All, 1]], VertexList[cg][[All, 2]]];
     If[!TrueQ[OptionValue["IncludeInitialState"]],
         states = DeleteCases[states, {{_, _Missing}}];
-        multiwayEdges = DeleteCases[multiwayEdges, DirectedEdge[{{_, _Missing}}, __]]
+        multiwayEdges = DeleteCases[multiwayEdges, DirectedEdge[{{_, _Missing}}, __] | DirectedEdge[_, {{_, _Missing}}, ___]]
     ];
     Graph[
         If[TrueQ[OptionValue["IncludeInitialEvent"]], Identity, VertexDelete[#, DirectedEdge[{{_, _Missing}}, __]] &] @
@@ -247,7 +249,7 @@ MultiTokenEventGraph[cg_Graph, type : _String | None : None, opts : OptionsPatte
     tokens = DeleteDuplicates @ Cases[Vertex, {DirectedEdge[token_, _DirectedEdge] :> token, DirectedEdge[_DirectedEdge, token_] :> token}];
     If[!TrueQ[OptionValue["IncludeInitialState"]],
         tokens = DeleteCases[tokens, {_, _Missing}];
-        edges = DeleteCases[edges, DirectedEdge[{_, _Missing}, __]]
+        edges = DeleteCases[edges, DirectedEdge[{_, _Missing}, __] | DirectedEdge[_, {_, _Missing}, ___]]
     ];
     Graph[
         If[TrueQ[OptionValue["IncludeInitialEvent"]], Identity, VertexDelete[#, DirectedEdge[{{_, _Missing}}, __]] &] @
@@ -257,5 +259,29 @@ MultiTokenEventGraph[cg_Graph, type : _String | None : None, opts : OptionsPatte
         VertexLabels -> If[type === None, None, # -> Automatic & /@ tokens],
         VertexStyle -> (# -> Directive[ResourceFunction["WolframPhysicsProjectStyleData"]["StatesGraph"]["VertexStyle"], EdgeForm[]] & /@ tokens)
     ]
+]
+
+
+Options[CausalStatesGraph] = Join[{"TransitiveReduction" -> False}, Options[Graph]];
+
+CausalStatesGraph[cg_Graph, opts : OptionsPattern[]] := Graph[
+	VertexList[cg],
+    FilterRules[{opts, VertexSize -> 128}, Options[Graph]],
+	VertexShapeFunction -> Function[
+		Inset[Tooltip[Framed[
+			If[TrueQ[OptionValue["TransitiveReduction"]], TransitiveReductionGraph, Identity] @ VertexInComponentGraph[
+				cg,
+				VertexList[cg, DirectedEdge[#2, __] | DirectedEdge[_,#2,___]],
+				EdgeStyle -> Directive[
+					Arrowheads[0.05],
+					ResourceFunction["WolframPhysicsProjectStyleData"]["CausalGraph"]["EdgeStyle"]
+				],
+				ImageSize -> #3
+			],
+			Background -> LightGray], #2],
+			#1
+		]
+	],
+    PerformanceGoal -> "Quality"
 ]
 

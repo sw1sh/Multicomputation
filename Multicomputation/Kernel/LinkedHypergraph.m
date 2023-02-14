@@ -294,8 +294,8 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_, _]] := With[{
 	]
 ]
 
-Options[ApplyHypergraphRules] = {"Hypergraph" -> True, "MultiReplaceOptions" -> {"Mode" -> "OrderlessSubsets"}}
-ApplyHypergraphRules[x_, rules_, OptionsPattern[]] := With[{rhsLengths = Extract[#, {2, 1, 2, 1}, Length] & /@ rules},
+Options[ApplyHypergraphRules] = Join[{"Hypergraph" -> True, "Mode" -> "OrderlessSubsets"}, Options[MultiReplace]]
+ApplyHypergraphRules[x_, rules_, opts : OptionsPattern[]] := With[{rhsLengths = Extract[#, {2, 1, 2, 1}, Length] & /@ rules},
     Association @ KeyValueMap[
         Block[{
             state = First[#2],
@@ -320,7 +320,7 @@ ApplyHypergraphRules[x_, rules_, OptionsPattern[]] := With[{rhsLengths = Extract
                 "Input" -> destroyed, "Output" -> created, "Rule" -> #1[[1]], "Position" -> #1[[2]]
             |> -> state
         ] &,
-       	MultiReplace[x, rules, {1}, OptionValue["MultiReplaceOptions"]]
+       	MultiReplace[x, rules, {1}, FilterRules[{opts}, Options[MultiReplace]]]
     ]
 ]
 
@@ -334,7 +334,7 @@ HypergraphMulti[init_, rule_, autoType: Except[OptionsPattern[]] : Automatic, op
 		hypergraphQ = type === "Hypergraph"
 	},
 		Multi[
-			ToLinkedHypergraph[#, type] & /@ wrap[init],
+			ToLinkedHypergraph[#, type] & /@ If[MatchQ[init, {{___List}}] || type === "List" && MatchQ[init, {___List}], init, {init}],
 			RuleDelayed @@ Hold[\[FormalCapitalH]_, ApplyHypergraphRules[\[FormalCapitalH], multReplaceRules, opts, "Hypergraph" -> hypergraphQ]],
 			{1}
 		]

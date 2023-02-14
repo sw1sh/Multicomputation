@@ -1,10 +1,11 @@
-(* ::Package:: *)
-
 Package["Wolfram`Multicomputation`"]
 
+PackageImport["Wolfram`MulticomputationInit`"]
+
 PackageExport["Multi"]
+
 PackageScope["$MultiKeys"]
-PacakgeScope["$MultiOptions"]
+PackageScope["$MultiOptions"]
 PackageScope["$MultiOptionsPattern"]
 PackageScope["MultiDataQ"]
 
@@ -224,13 +225,11 @@ Multi[alts_List, opts : OptionsPattern[$MultiOptions]] := With[{ph = MultiPlaceh
 Multi[assoc_Association, args__] := Multi[Values[assoc], args]
 
 
-Multi[subExpr : Except[_List | _Association], opts : OptionsPattern @ $MultiOptions] := Multi[<|
+Multi[subExpr : Except[_List | _Association], opts : OptionsPattern[$MultiOptions]] := Multi[<|
     "Expression" :> subExpr,
     "Matches" -> GroupBy[
-        MultiEvaluate[
-            Unevaluated @ subExpr,
-            "Keys",
-            FilterRules[{opts}, Options[MultiEvaluate]]
+        With[{filterOpts = FilterRules[{opts}, Options[MultiEvaluate]]},
+            MultiEvaluate[subExpr, "Keys", filterOpts]
         ],
         Take[#, 2] &,
         Map[If[Length @ # > 2, Last @ #, None] &]
