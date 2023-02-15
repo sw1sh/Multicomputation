@@ -1,6 +1,3 @@
-BeginPackage["Wolfram`Multicomputation`"]
-
-
 $WFR = {
     <|
         "Name" -> "MultiReplace",
@@ -26,12 +23,11 @@ Scan[data |->
     With[{sym = Symbol[data["Name"]],
         wfr = If[MissingQ[data["FunctionLocation"]], ResourceFunction[data["Name"]], ResourceFunction[ResourceObject[data]]]
     },
+        sym;
         sym[args___] := wfr[args];
         Options[sym] = Options[wfr];
         SetAttributes[sym, HoldAllComplete]
     ],
     $WFR
 ]
-
-EndPackage[]
 

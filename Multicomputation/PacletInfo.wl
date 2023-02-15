@@ -13,6 +13,7 @@ PacletObject[
         "Root" -> "Kernel",
         "Context" -> {
           "Wolfram`MulticomputationLoader`",
+          "Wolfram`MulticomputationInit`",
           {
             "Wolfram`Multicomputation`",
             "MulticomputationMain.m"
@@ -20,10 +21,10 @@ PacletObject[
         },
         "Symbols" -> {
           "Wolfram`Multicomputation`Multi",
-          "Wolfram`Multicomputation`MultiReplace",
-          "Wolfram`Multicomputation`MultiEvaluate",
           "Wolfram`Multicomputation`MultiStringReplace",
-          "Wolfram`Multicomputation`MultiwaySystem"
+          "Wolfram`Multicomputation`MultiwaySystem",
+          "Wolfram`Multicomputation`ToLinkedHypergraph",
+          "Wolfram`Multicomputation`FromLinkedHypergraph"
         }
       },
       {"Documentation", "Language" -> "English"}
