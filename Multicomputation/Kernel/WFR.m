@@ -2,8 +2,8 @@ $WFR = {
     <|
         "Name" -> "MultiReplace",
         "ResourceType" -> "Function",
-        "FunctionLocation" -> CloudObject["https://www.wolframcloud.com/obj/nikm/Resources/46f/46fb8cf0-fb3c-42e2-bb1a-b5e3b779acd5/download/DefinitionData"],
-        "SymbolName" -> "FunctionRepository`$46fb8cf0fb3c42e2bb1ab5e3b779acd5`MultiReplace"
+        "FunctionLocation" -> CloudObject["https://www.wolframcloud.com/obj/nikm/Resources/e95/e95e886d-0871-40ac-9167-a03825e05f6b/download/DefinitionData"],
+        "SymbolName" -> "FunctionRepository`$e95e886d087140ac9167a03825e05f6b`MultiReplace"
     |>,
     <|
         "Name" -> "MultiEvaluate",

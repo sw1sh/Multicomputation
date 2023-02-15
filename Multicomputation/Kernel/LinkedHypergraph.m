@@ -1,5 +1,7 @@
 Package["Wolfram`Multicomputation`"]
 
+PackageImport["Wolfram`MulticomputationInit`"]
+
 PackageExport["LinkedHypergraphQ"]
 PackageExport["ToLinkedHypergraph"]
 PackageExport["FromLinkedHypergraph"]
@@ -284,7 +286,7 @@ CanonicalLinkedHypergraph[lhg_, OptionsPattern[]] := Block[{
 ]
 
 
-PatternRuleToMultiReplaceRule[rule : _[lhs_, _]] := With[{
+PatternRuleToMultiReplaceRule[rule : _[lhs_, _Module]] := With[{
     nothings = Unevaluated @@ Array[Nothing &, Length[lhs] - 1, Automatic, Hold @* List]
 },
 	ResourceFunction["SpliceAt"][
@@ -294,8 +296,29 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_, _]] := With[{
 	]
 ]
 
+PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List], Verbatim[Module][vars_, rhs_List]]] := Block[{
+	l = Length[Unevaluated[lhs]], r = Length[Unevaluated[rhs]],
+	newRule
+},
+	newRule = If[r > 1, MapAt[Splice, rule, {2, 2}], Delete[rule, {2, 2, 0}]];
+	If[r < l, newRule = Nest[Insert[Nothing, {2, 2}], MapAt[List, newRule, {2}], l - r]];
+	ReplaceAt[newRule /. Verbatim[Module][{}, body_] :> body, Splice[body_] :> body, {2}]
+]
+
 Options[ApplyHypergraphRules] = Join[{"Hypergraph" -> True, "Mode" -> "OrderlessSubsets"}, Options[MultiReplace]]
-ApplyHypergraphRules[x_, rules_, opts : OptionsPattern[]] := With[{rhsLengths = Extract[#, {2, 1, 2, 1}, Length] & /@ rules},
+ApplyHypergraphRules[x_, rules_, opts : OptionsPattern[]] := With[{
+	rhsLengths = Replace[
+		rules,
+		_[_, {rhs___} | rhs___] :> Total @ Replace[
+			Unevaluated[{rhs}], {
+				Verbatim[Module][_, Splice[splice_List]] :> Length[Unevaluated[splice]],
+				_ -> 1
+			},
+			{1}
+		],
+		{1}
+	]
+},
     Association @ KeyValueMap[
         Block[{
             state = First[#2],
@@ -320,7 +343,7 @@ ApplyHypergraphRules[x_, rules_, opts : OptionsPattern[]] := With[{rhsLengths = 
                 "Input" -> destroyed, "Output" -> created, "Rule" -> #1[[1]], "Position" -> #1[[2]]
             |> -> state
         ] &,
-       	MultiReplace[x, rules, {1}, FilterRules[{opts}, Options[MultiReplace]]]
+        MultiReplace[x, rules, {1}, FilterRules[{opts}, Options[MultiReplace]]]
     ]
 ]
 
