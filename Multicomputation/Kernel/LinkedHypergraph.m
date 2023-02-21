@@ -128,7 +128,7 @@ StringToLinkedHypergraph[s_] := ListToLinkedHypergraph[Characters[s]]
 
 LinkedHypergraphToString[hg : {{_, _, ___} ...}, OptionsPattern[]] := Enclose @ StringJoin[ToString /@ ConfirmBy[LinkedHypergraphToList[hg], ListQ]]
 
-PatternToLinkedHypergraph[Verbatim[Condition][expr_, test_], patt_ : None] := Condition @@ {PatternToLinkedHypergraph[Unevaluated[expr], patt], test}
+PatternToLinkedHypergraph[Verbatim[Condition][expr_, test_], patt_ : None] := Condition @@ Hold[PatternToLinkedHypergraph[Unevaluated[expr], patt], test]
 
 PatternToLinkedHypergraph[expr : Except[_Condition], patt_ : None] := If[patt === None,
 	TreeToLinkedHypergraph[ExpressionTree[Unevaluated[expr]]],
@@ -257,9 +257,8 @@ LinkedHypergraphRuleToPatternRule[rule_] := Module[{
 				ReplaceAt[leftMap, {{2, All, 1}, {2, All, 3 ;;}}] @
                 ReplaceAt[p_Pattern :> (p /. Blank -> BlankNullSequence), {1, All, 2}] @
                 newRule;
-	With[{test = Replace[rule[[1]], {Verbatim[Condition][_, test_] :> test, _ -> None}]},
-		If[test =!= None, newRule = MapAt[Condition[#, test] &, newRule, {1}]]
-	];
+	Function[test, If[Unevaluated[test] =!= None, newRule = MapAt[Condition[#, test] &, newRule, {1}]], HoldAll] @@
+		Replace[rule[[1]], {Verbatim[Condition][_, test_] :> Hold[test], _ -> Hold[None]}];
 	newVars = Complement[Cases[rightPayloads, p_Pattern :> First[p], All], Cases[leftPayloads, p_Pattern :> First[p], All]];
 	With[{
 		newSymbols = Join[Values[newMap], newVars],
