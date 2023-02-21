@@ -128,10 +128,12 @@ StringToLinkedHypergraph[s_] := ListToLinkedHypergraph[Characters[s]]
 
 LinkedHypergraphToString[hg : {{_, _, ___} ...}, OptionsPattern[]] := Enclose @ StringJoin[ToString /@ ConfirmBy[LinkedHypergraphToList[hg], ListQ]]
 
-PatternToLinkedHypergraph[expr_, patt_ : None] := If[patt === None,
-	TreeToLinkedHypergraph[ExpressionTree[expr]],
-	With[{map = AssociationThread[#, Table[Unique[], Length[#]]] & @ Cases[expr, patt, All]},
-		ReplaceAt[Reverse /@ Normal @ map, {All, 2}] @ TreeToLinkedHypergraph[ExpressionTree[expr /. map]]
+PatternToLinkedHypergraph[Verbatim[Condition][expr_, test_], patt_ : None] := Condition @@ {PatternToLinkedHypergraph[Unevaluated[expr], patt], test}
+
+PatternToLinkedHypergraph[expr : Except[_Condition], patt_ : None] := If[patt === None,
+	TreeToLinkedHypergraph[ExpressionTree[Unevaluated[expr]]],
+	With[{map = AssociationThread[#, Table[Unique[], Length[#]]] & @ Cases[Unevaluated[expr], patt, All]},
+		ReplaceAt[Reverse /@ Normal @ map, {All, 2}] @ TreeToLinkedHypergraph[With[{newExpr = Unevaluated @@ (Hold[expr] /. map)}, ExpressionTree[newExpr]]]
 	]
 ]
 
@@ -174,7 +176,7 @@ MultiwayType[expr_] := Which[
 ]
 
 ToLinkedHypergraph[expr_, autoType : _String | Automatic : Automatic] := With[{type = Replace[autoType, Automatic :> MultiwayType[expr]]},
-	If[	MatchQ[expr, _Rule | _RuleDelayed],
+	If[	MatchQ[Unevaluated[expr], _Rule | _RuleDelayed],
 		Switch[type,
 			"String",
 			StringToLinkedHypergraph[expr[[1]]] -> StringToLinkedHypergraph[expr[[2]]],
@@ -195,19 +197,19 @@ ToLinkedHypergraph[expr_, autoType : _String | Automatic : Automatic] := With[{t
 		],
 		Switch[type,
 			"Graph",
-			GraphToLinkedHypergraph[expr],
+			GraphToLinkedHypergraph[Unevaluated[expr]],
 			"Tree",
-			TreeToLinkedHypergraph[expr],
+			TreeToLinkedHypergraph[Unevaluated[expr]],
 			"String",
-			StringToLinkedHypergraph[expr],
+			StringToLinkedHypergraph[Unevaluated[expr]],
 			"Hypergraph",
-			HypergraphToLinkedHypergraph[expr],
+			HypergraphToLinkedHypergraph[Unevaluated[expr]],
 			"List",
-			ListToLinkedHypergraph[expr],
+			ListToLinkedHypergraph[Unevaluated[expr]],
 			"ConstructExpression",
-			ConstructPatternToLinkedHypergraph[expr, PatternHead[___]],
+			ConstructPatternToLinkedHypergraph[Unevaluated[expr], PatternHead[___]],
 			_,
-			PatternToLinkedHypergraph[expr, PatternHead[___]]
+			PatternToLinkedHypergraph[Unevaluated[expr], PatternHead[___]]
 		]
 	]
 ]
@@ -242,19 +244,22 @@ LinkedHypergraphRuleToPatternRule[rule_] := Module[{
 	leftLinks, rightLinks, leftPayloads, rightPayloads,
 	newLinks, newVars, patts, leftMap, newMap, newRule
 },
-	{leftLinks, rightLinks} = Union @ Flatten[{#[[All, ;; 1]], #[[All, 3 ;;]]}] & /@ List @@ rule;
+	newRule = ReplaceAt[rule, Verbatim[Condition][expr_, _] :> expr, {1}];
+	{leftLinks, rightLinks} = Union @ Flatten[{#[[All, ;; 1]], #[[All, 3 ;;]]}] & /@ List @@ newRule;
+	{leftPayloads, rightPayloads} = Union @ #[[All, 2]] & /@ List @@ newRule;
 	newLinks = Complement[rightLinks, leftLinks];
-    patts = Union @ Cases[rule[[1]], Verbatim[Pattern][s_, _] :> s, All];
+    patts = Union @ Cases[newRule[[1]], Verbatim[Pattern][s_, _] :> s, All];
 	leftMap = AssociationThread[leftLinks -> (Symbol["\[FormalX]" <> ToString[#]] & /@ Range[Length[leftLinks]])];
 	newMap = AssociationThread[newLinks -> (Symbol["\[FormalY]" <> ToString[#]] & /@ Range[Length[newLinks]])];
 	newRule = RuleDelayed @@
-				MapAt[Replace[newMap], {{2, All, 1}, {2, All, 3 ;;}}] @
-				MapAt[Replace[Pattern[#, _] & /@ leftMap], {{1, All, 1}, {1, All, 3 ;;}}] @
-				MapAt[Replace[leftMap], {{2, All, 1}, {2, All, 3 ;;}}] @
-                MapAt[Replace[p_Pattern :> (p /. Blank -> BlankNullSequence)], {1, All, 2}] @
-                (* MapAt[Replace[s : Alternatives @@ patts :> Hold[Splice @ Prepend[First[{s}]] @ Table[Unique[], Length[{s}] - 1]]], {2, All, 2}] *)
-                rule;
-	{leftPayloads, rightPayloads} = Union @ #[[All, 2]] & /@ List @@ rule;
+				ReplaceAt[newMap, {{2, All, 1}, {2, All, 3 ;;}}] @
+				ReplaceAt[Pattern[#, _] & /@ leftMap, {{1, All, 1}, {1, All, 3 ;;}}] @
+				ReplaceAt[leftMap, {{2, All, 1}, {2, All, 3 ;;}}] @
+                ReplaceAt[p_Pattern :> (p /. Blank -> BlankNullSequence), {1, All, 2}] @
+                newRule;
+	With[{test = Replace[rule[[1]], {Verbatim[Condition][_, test_] :> test, _ -> None}]},
+		If[test =!= None, newRule = MapAt[Condition[#, test] &, newRule, {1}]]
+	];
 	newVars = Complement[Cases[rightPayloads, p_Pattern :> First[p], All], Cases[leftPayloads, p_Pattern :> First[p], All]];
 	With[{
 		newSymbols = Join[Values[newMap], newVars],
@@ -286,7 +291,7 @@ CanonicalLinkedHypergraph[lhg_, OptionsPattern[]] := Block[{
 ]
 
 
-PatternRuleToMultiReplaceRule[rule : _[lhs_, _Module]] := With[{
+PatternRuleToMultiReplaceRule[rule : _[Verbatim[Condition][lhs_, _] | lhs_, _Module]] := With[{
     nothings = Unevaluated @@ Array[Nothing &, Length[lhs] - 1, Automatic, Hold @* List]
 },
 	ResourceFunction["SpliceAt"][
@@ -354,10 +359,11 @@ HypergraphMulti[init_, rule_, autoType: Except[OptionsPattern[]] : Automatic, op
 	type = Replace[autoType, Automatic -> First[ConfirmBy[MultiwayType /@ rules, Apply[Equal], "All rules must have the same type."]]];
 	With[{
 		multReplaceRules = Map[ToLinkedHypergraph[#, type] & /* LinkedHypergraphRuleToPatternRule /* PatternRuleToMultiReplaceRule, rules],
-		hypergraphQ = type === "Hypergraph"
+		hypergraphQ = type === "Hypergraph",
+		listInit = Unevaluated @@ If[MatchQ[Unevaluated[init], {{___List}}] || type === "List" && MatchQ[Unevaluated[init], {___List}], Hold[init], Hold[{init}]]
 	},
 		Multi[
-			ToLinkedHypergraph[#, type] & /@ If[MatchQ[init, {{___List}}] || type === "List" && MatchQ[init, {___List}], init, {init}],
+			Function[Null, ToLinkedHypergraph[Unevaluated[#], type], HoldAll] /@ listInit,
 			RuleDelayed @@ Hold[\[FormalCapitalH]_, ApplyHypergraphRules[\[FormalCapitalH], multReplaceRules, opts, "Hypergraph" -> hypergraphQ]],
 			{1}
 		]

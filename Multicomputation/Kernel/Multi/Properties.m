@@ -7,6 +7,7 @@ PackageScope["MultiProp"]
 MultiProp[multi_, "Properties"] := {
     "Expression", "HoldExpression",
     "Data",
+    "Bindings",
     "ListValues", "HoldListValues",
     "EvaluateList", "HoldEvaluateList",
     "EvaluateListOnce", "HoldEvaluateListOnce",
@@ -100,11 +101,11 @@ MultiProp[multi_, "Tuples"] := Tuples @ multi["ListValues"]
 
 MultiProp[multi_, "HoldTuples"] := Tuples @ multi["HoldListValues"]
 
-MultiProp[multi_, "MatchSubstitutions"] := If[MatchQ[#, {_, "Rule", _}], #[[3, 2]], {<||>}] & /@ Keys @ multi["Matches"]
+MultiProp[multi_, "MatchBindings"] := If[MatchQ[#, {_, "Rule", _}], #[[3, 2]], {<||>}] & /@ Keys @ multi["Matches"]
 
-MultiProp[multi_, "Substitutions"] := Join[Table[<||>, #] & /@ Values[Length /@ multi["Values"]], multi["MatchSubstitutions"]]
+MultiProp[multi_, "Bindings"] := Join[Table[<||>, #] & /@ Values[Length /@ multi["Values"]], multi["MatchBindings"]]
 
-MultiProp[multi_, "EvaluateList"] := With[{expr = Unevaluated @@ (multi["HoldExpression"] /. Join @@ Catenate @ multi["Substitutions"])},
+MultiProp[multi_, "EvaluateList"] := With[{expr = Unevaluated @@ (multi["HoldExpression"] /. Join @@ Catenate @ multi["Bindings"])},
     Map[ReplacePart[expr, Thread[Replace[{} -> {{}}] /@ multi["Positions"] -> #]] &, multi["Tuples"]]
 ]
 
@@ -124,7 +125,7 @@ MultiProp[multi_, "EvaluateListOnce"] := With[{pos = multi["Positions"]},
                 values = multi["ListValues"]
             }, {
                 Tuples @ values,
-                Tuples @ MapThread[PadRight[#1, Length @ #2, <||>] &, {multi["Substitutions"], values}]
+                Tuples @ MapThread[PadRight[#1, Length @ #2, <||>] &, {multi["Bindings"], values}]
             }
             ]
         ],
@@ -133,7 +134,7 @@ MultiProp[multi_, "EvaluateListOnce"] := With[{pos = multi["Positions"]},
 ]
 
 MultiProp[multi_, "HoldEvaluateList"] := With[{
-    expr = multi["HoldExpression"] /. Join @@ Catenate @ multi["Substitutions"]
+    expr = multi["HoldExpression"] /. Join @@ Catenate @ multi["Bindings"]
 },
     Map[
         ReplacePart[
@@ -163,7 +164,7 @@ MultiProp[multi_, "HoldEvaluateListOnce"] := With[{pos = Map[Prepend[1], multi["
             },
                 {
                     Tuples @ values,
-                    Tuples @ MapThread[PadRight[#1, Length@#2, <||>] &, {multi["Substitutions"], values}]
+                    Tuples @ MapThread[PadRight[#1, Length@#2, <||>] &, {multi["Bindings"], values}]
                 }
             ]
         ],

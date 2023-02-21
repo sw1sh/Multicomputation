@@ -24,7 +24,7 @@ m : MultiwaySystem[rules_, init_, OptionsPattern[]] /; ! MultiwaySystemQ[Unevalu
         {_, opts : OptionsPattern[]} | _ -> {HypergraphMulti, {opts}}
     }];
     MultiwaySystem[
-        Evaluate[method[init, rules, methodOpts]],
+        Evaluate[method[Unevaluated[init], rules, methodOpts]],
         type
     ]
 ]
@@ -32,9 +32,9 @@ m : MultiwaySystem[rules_, init_, OptionsPattern[]] /; ! MultiwaySystemQ[Unevalu
 SetAttributes[MultiwaySystem, HoldFirst]
 
 
-MultiwaySystemProp[_, "Properties"] := {
+MultiwaySystemProp[_, "Properties"] := Sort @ {
     "Properties", "Multi", "Type", "Graph", "EvolutionGraph", "StatesGraph", "CausalGraph", "BranchialGraph", "AllStatesBranchialGraph",
-    "EvolutionCausalGraph", "EvolutionEventsGraph", "CausalBranchialGraph", "TokenEventGraph"
+    "EvolutionCausalGraph", "EvolutionEventsGraph", "CausalBranchialGraph", "TokenEventGraph", "CausalStatesGraph"
 }
 
 MultiwaySystemProp[HoldPattern[MultiwaySystem[multi_, _]], "Multi"] := multi
@@ -65,7 +65,7 @@ Block[{g},
     g = m["Multi"]["Graph", n,
         opts,
         VertexLabels -> Placed[Automatic, Tooltip],
-        VertexShapeFunction -> (Tooltip[$StateVertexShapeFunction[#1, FromLinkedHypergraph[#2, type], #3], #2] &),
+        VertexShapeFunction -> (Tooltip[$StateVertexShapeFunction[#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3], #2] &),
         VertexSize -> If[type === "Hypergraph", 64, Automatic],
         GraphLayout -> "LayeredDigraphEmbedding",
         PerformanceGoal -> "Quality"
@@ -88,7 +88,7 @@ Block[{g},
         ],
         FilterRules[{opts}, Options[Graph]],
         VertexLabels -> Placed[Automatic, Tooltip],
-        VertexShapeFunction -> (Tooltip[$StateVertexShapeFunction[#1, FromLinkedHypergraph[#2, type], #3], #2] &),
+        VertexShapeFunction -> (Tooltip[$StateVertexShapeFunction[#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3], #2] &),
         VertexSize -> If[type === "Hypergraph", 64, Automatic],
         GraphLayout -> "LayeredDigraphEmbedding",
         PerformanceGoal -> "Quality"
@@ -174,13 +174,13 @@ DefaultEventShape[DirectedEdge[from_, to_, tag_], type_] := Framed[
                     ReplacePart[from, lhsRootPos -> {
                         Extract[from, lhsRootPos, First],
                         Column[{
-                            TreeExpression @ LinkedHypergraphToRootTree[from, Extract[from, lhsRootPos, First]],
-                            TreeExpression @ LinkedHypergraphToRootTree[to, Extract[to, rhsRootPos, First]]
+                            HoldForm @@ TreeExpression[LinkedHypergraphToRootTree[from, Extract[from, lhsRootPos, First]], "HeldHeadTrees"],
+                            HoldForm @@ TreeExpression[LinkedHypergraphToRootTree[to, Extract[to, rhsRootPos, First]], "HeldHeadTrees"]
                         }, Alignment -> Center, Spacings -> 0]
                     }],
                     DeleteCases[lhsPos, lhsRootPos]
                 ],
-                "Expression"
+                "HoldExpression"
             ]
         ],
         Black
@@ -239,7 +239,7 @@ Block[{g},
         },
         VertexShapeFunction -> {
             _DirectedEdge -> EventShapeFunction[type],
-            Except[_DirectedEdge] -> Function[Tooltip[$StateVertexShapeFunction[#1, FromLinkedHypergraph[{#2}, type], #3], #2]]
+            Except[_DirectedEdge] -> Function[Tooltip[$StateVertexShapeFunction[#1, #2, #3], #2]]
         },
         VertexSize -> If[type === "Hypergraph", 64, Automatic],
         GraphLayout -> "LayeredDigraphEmbedding",
@@ -342,7 +342,7 @@ With[{type = m["Type"]},
         },
         VertexShapeFunction -> {
             _DirectedEdge -> EventShapeFunction[type],
-            Except[_DirectedEdge] -> Function[$StateVertexShapeFunction[#1, FromLinkedHypergraph[#2, type], #3]]
+            Except[_DirectedEdge] -> Function[$StateVertexShapeFunction[#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3]]
         },
         VertexSize -> If[type === "Hypergraph", 64, Automatic],
         GraphLayout -> "LayeredDigraphEmbedding",
@@ -372,7 +372,7 @@ Block[{g},
             Catenate[UndirectedEdge @@@ ReleaseHold[#]["BranchPairs"] & /@ m["Multi"]["Foliations", n - 1][[1, All, 1]]]
         ],
         EdgeStyle -> ResourceFunction["WolframPhysicsProjectStyleData"]["BranchialGraph"]["EdgeStyle"],
-        VertexShapeFunction -> Function[Tooltip[$StateVertexShapeFunction[#1, FromLinkedHypergraph[#2, type], #3], #2]],
+        VertexShapeFunction -> Function[Tooltip[$StateVertexShapeFunction[#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3], #2]],
         VertexSize -> If[type === "Hypergraph", 64, Automatic],
         PerformanceGoal -> "Quality"
     ];
