@@ -176,7 +176,7 @@ DefaultEventShape[DirectedEdge[from_, to_, tag_], type_] := Framed[
                         Column[{
                             HoldForm @@ TreeExpression[LinkedHypergraphToRootTree[from, Extract[from, lhsRootPos, First]], "HeldHeadTrees"],
                             HoldForm @@ TreeExpression[LinkedHypergraphToRootTree[to, Extract[to, rhsRootPos, First]], "HeldHeadTrees"]
-                        }, Alignment -> Center, Spacings -> 0]
+                        }, Alignment -> Center, Spacings -> 0] //. HoldPattern[Construct[f_, x__]] :> f[x]
                     }],
                     DeleteCases[lhsPos, lhsRootPos]
                 ],

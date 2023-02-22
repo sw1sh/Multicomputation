@@ -137,10 +137,12 @@ PatternToLinkedHypergraph[expr : Except[_Condition], patt_ : None] := If[patt ==
 	]
 ]
 
+ConstructPatternToLinkedHypergraph[Verbatim[Condition][expr_, test_], patt_ : None] := Condition @@ Hold[ConstructPatternToLinkedHypergraph[Unevaluated[expr], patt], test]
+
 ConstructPatternToLinkedHypergraph[expr_, patt_ : None] := If[patt === None,
-	TreeToLinkedHypergraph[ExpressionTree[expr, "Atoms", Heads -> True]],
-	With[{map = AssociationThread[#, Table[Unique[], Length[#]]] & @ Cases[expr, patt, All, Heads -> True]},
-		ReplaceAt[Reverse /@ Normal @ map, {All, 2}] @ TreeToLinkedHypergraph[TreeMap[Replace[Null -> Construct]] @ ExpressionTree[expr /. map, "Atoms", Heads -> True]]
+	TreeToLinkedHypergraph[ExpressionTree[Unevaluated[expr], "Atoms", Heads -> True]],
+	With[{map = AssociationThread[#, Table[Unique[], Length[#]]] & @ Cases[Unevaluated[expr], patt, All, Heads -> True]},
+		ReplaceAt[Reverse /@ Normal @ map, {All, 2}] @ TreeToLinkedHypergraph[TreeMap[Replace[Null -> Construct]] @ With[{newExpr = Unevaluated @@ (Hold[expr] /. map)}, ExpressionTree[newExpr, "Atoms", Heads -> True]]]
 	]
 ]
 
@@ -187,12 +189,12 @@ ToLinkedHypergraph[expr_, autoType : _String | Automatic : Automatic] := With[{t
 			"ConstructExpression",
 			Rule @@ {
 				ConstructPatternToLinkedHypergraph[expr[[1]], PatternHead[___]],
-				ConstructPatternToLinkedHypergraph[expr[[2]], PatternHead[___]]
+				Function[Null, ConstructPatternToLinkedHypergraph[Unevaluated[#], PatternHead[___]], HoldAll] @@ Extract[expr, {2}, Hold]
 			},
 			_,
 			Rule @@ {
 				PatternToLinkedHypergraph[expr[[1]], PatternHead[___]],
-				PatternToLinkedHypergraph[expr[[2]], PatternHead[___]]
+				Function[Null, PatternToLinkedHypergraph[Unevaluated[#], PatternHead[___]], HoldAll] @@ Extract[expr, {2}, Hold]
 			}
 		],
 		Switch[type,
