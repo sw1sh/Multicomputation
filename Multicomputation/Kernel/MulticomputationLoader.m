@@ -1,5 +1,7 @@
 Package["Wolfram`MulticomputationLoader`"]
 
+PackageImport["DocumentationSearch`"]
+
 
 
 PacletManager`Package`loadWolframLanguageCode[
@@ -14,4 +16,9 @@ PacletManager`Package`loadWolframLanguageCode[
     },
     "HiddenImports" -> {}
 ];
+
+
+$PacletPath = ExpandFileName[FileNameJoin[{DirectoryName[$InputFileName], ".."}]]
+
+Quiet[CreateDocumentationIndex[FileNameJoin[{$PacletPath, "Documentation", "English"}]]]
 
