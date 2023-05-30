@@ -42,7 +42,7 @@ MultiwaySystemProp[HoldPattern[MultiwaySystem[multi_, _]], "Multi"] := multi
 MultiwaySystemProp[HoldPattern[MultiwaySystem[_, type_]], "Type"] := type
 
 
-StateShape[hg : {{__}...}, size_ : Automatic] := ResourceFunction["WolframModelPlot"][hg, ImageSize -> size, PlotRangePadding -> 0]
+StateShape[hg : {{_Integer, __}...}, size_ : Automatic] := ResourceFunction["WolframModelPlot"][hg, ImageSize -> size, PlotRangePadding -> 0]
 StateShape[_Missing, ___] := ""
 StateShape[expr_, ___] := expr
 
