@@ -34,7 +34,7 @@ SetAttributes[MultiwaySystem, HoldFirst]
 
 MultiwaySystemProp[_, "Properties"] := Sort @ {
     "Properties", "Multi", "Type", "Graph", "EvolutionGraph", "StatesGraph", "CausalGraph", "BranchialGraph", "AllStatesBranchialGraph",
-    "EvolutionCausalGraph", "EvolutionEventsGraph", "CausalBranchialGraph", "TokenEventGraph", "CausalStatesGraph"
+    "EvolutionCausalGraph", "EvolutionEventsGraph", "CausalBranchialGraph", "TokenEventGraph", "CausalEvolutionGraph", "CausalStatesGraph"
 }
 
 MultiwaySystemProp[HoldPattern[MultiwaySystem[multi_, _]], "Multi"] := multi
@@ -74,7 +74,7 @@ Block[{g},
     g
 ]]
 
-MultiwaySystemProp[m_, "StatesGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] := With[{type = m["Type"]},
+MultiwaySystemProp[m_, "StatesGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[{"IncludeInitialState" -> False}]] := With[{type = m["Type"]},
 Block[{g},
     g = Graph[
         m["Expression"],
@@ -92,6 +92,9 @@ Block[{g},
         VertexSize -> If[type === "Hypergraph", 64, Automatic],
         GraphLayout -> "LayeredDigraphEmbedding",
         PerformanceGoal -> "Quality"
+    ];
+    If[ TrueQ[OptionValue["IncludeInitialState"]],
+        g = EdgeAdd[g, DirectedEdge[{{1, Missing[]}}, #] & /@ m["Expression"]]
     ];
     g = canonicalizeStates[g, type, FilterRules[{opts}, Options[canonicalizeStates]], "CanonicalStateFunction" -> Automatic];
     g
@@ -161,8 +164,8 @@ Framed[
 DefaultEventShape[DirectedEdge[from_, to_, tag_], type_] := Framed[
     Style[
         Block[{
-            lhsPos = Position[from, {Alternatives @@ tag["Input"], ___}, {1}, Heads -> False],
-            rhsPos = Position[to, {Alternatives @@ tag["Output"], ___}, {1}, Heads -> False],
+            lhsPos = tag["Position"],
+            rhsPos = FirstPosition[to, {#, ___}, {1}, Heads -> False] & /@ tag["Output"],
             lhs, rhs, lhsRootPos, rhsRootPos
         },
             lhs = Extract[from, lhsPos];
@@ -193,13 +196,13 @@ DefaultEventShape[DirectedEdge[from_, to_, tag_], type_] := Framed[
 EventShapeFunction[type_] := Switch[
     type,
     "String",
-    Function[Replace[#2, event : DirectedEdge[from_, to_, tag_] :> Inset[StatusArea[StringSubstitutionEventShape[event], tag], #1, {0, 0}]]],
+    Function[Replace[#2, event : DirectedEdge[Interpretation[_, from_] | from_, Interpretation[_, to_] | to_, tag_] :> Inset[StatusArea[StringSubstitutionEventShape[DirectedEdge[from, to, tag]], tag], #1, {0, 0}]]],
     "List",
-    Function[Replace[#2, event : DirectedEdge[from_, to_, tag_] :> Inset[StatusArea[ListSubstitutionEventShape[event], tag], #1, {0, 0}]]],
+    Function[Replace[#2, event : DirectedEdge[Interpretation[_, from_] | from_, Interpretation[_, to_] | to_, tag_] :> Inset[StatusArea[ListSubstitutionEventShape[DirectedEdge[from, to, tag]], tag], #1, {0, 0}]]],
     "Hypergraph",
-    Function[Replace[#2, event : DirectedEdge[from_, to_, tag_] :> Inset[StatusArea[WolframModelEventShape[event, #3], tag], #1, {0, 0}]]],
+    Function[Replace[#2, event : DirectedEdge[Interpretation[_, from_] | from_, Interpretation[_, to_] | to_, tag_] :> Inset[StatusArea[WolframModelEventShape[DirectedEdge[from, to, tag], #3], tag], #1, {0, 0}]]],
     _,
-    Function[Replace[#2, event : DirectedEdge[from_, to_, tag_] :> Inset[StatusArea[DefaultEventShape[event, type], tag], #1, {0, 0}]]]
+    Function[Replace[#2, event : DirectedEdge[Interpretation[_, from_] | from_, Interpretation[_, to_] | to_, tag_] :> Inset[StatusArea[DefaultEventShape[DirectedEdge[from, to, tag], type], tag], #1, {0, 0}]]]
 ]
 
 MultiwaySystemProp[m_, "CausalGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] := With[{type = m["Type"]},
@@ -214,7 +217,6 @@ Block[{g},
         PerformanceGoal -> "Quality"
     ];
     If[VertexCount[g] == 0, Return[g]];
-    g = canonicalizeEvents[g, type, FilterRules[{opts}, Options[canonicalizeEvents]]];
     With[{
         stateCanonicalFunction = Replace[OptionValue[canonicalizeStates, FilterRules[{opts}, Options[canonicalizeStates]], "CanonicalStateFunction"], {
             Automatic -> Function[FromLinkedHypergraph[#, type]],
@@ -223,8 +225,10 @@ Block[{g},
             _ -> Identity
         }]
     },
-        VertexReplace[g, DirectedEdge[from_, to_, tag___] :> DirectedEdge[stateCanonicalFunction[from], stateCanonicalFunction[to], tag]]
-    ]
+        g = VertexReplace[g, DirectedEdge[from_, to_, tag___] :> DirectedEdge[Interpretation[stateCanonicalFunction[from], from], Interpretation[stateCanonicalFunction[to], to], tag]]
+    ];
+    g = canonicalizeEvents[g, type, FilterRules[{opts}, Options[canonicalizeEvents]]];
+    g
 ]]
 
 MultiwaySystemProp[m_, "TokenEventGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] := With[{type = m["Type"]},
@@ -250,11 +254,12 @@ Block[{g},
     g
 ]]
 
-CanonicalEventFunction[DirectedEdge[from_, to_, tag_], type_, keys_List] := Block[{fromIso, canonicalFrom, toIso, canonicalTo},
+CanonicalEventFunction[event : DirectedEdge[Interpretation[ifrom_ : None, from_] | from_, Interpretation[ito_ : None, to_] | to_, tag_], type_, keys_List] := Block[{fromIso, canonicalFrom, toIso, canonicalTo},
     {fromIso, canonicalFrom} = CanonicalLinkedHypergraph[from, "IncludeIsomorphism" -> True];
     {toIso, canonicalTo} = CanonicalLinkedHypergraph[to, "IncludeIsomorphism" -> True];
     DirectedEdge[
-        FromLinkedHypergraph[canonicalFrom, type], FromLinkedHypergraph[canonicalTo, type],
+        If[ifrom === None, #, Interpretation[ifrom, #]] & @ FromLinkedHypergraph[canonicalFrom, type],
+        If[ito === None, #, Interpretation[ito, #]] & @ FromLinkedHypergraph[canonicalTo, type],
         Part[MapAt[ReplaceAll[toIso], "Output"] @ MapAt[ReplaceAll[fromIso], "Input"] @ tag, Key /@ keys]
     ]
 ]
@@ -380,10 +385,19 @@ Block[{g},
     g
 ]]
 
+MultiwaySystemProp[m_, "CausalEvolutionGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] :=
+    CausalStatesGraph[
+        m["CausalGraphStructure", n,
+            "CanonicalizeStates" -> False,
+            "IncludeInitialEvent" -> True, "CanonicalEventFunction" -> None,
+            "EdgeDeduplication" -> True, "TransitiveReduction" -> False
+        ], FilterRules[{opts}, Options[CausalStatesGraph]]
+    ]
+
 MultiwaySystemProp[m_, "CausalStatesGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] :=
     CausalStatesGraph[
         m["CausalGraphStructure", n,
-            "IncludeInitialEvent" -> True, "CanonicalEventFunction" -> Full,
+            "IncludeInitialEvent" -> True, "CanonicalStateFunction" -> Automatic, "CanonicalEventFunction" -> None,
             "EdgeDeduplication" -> True, "TransitiveReduction" -> False
         ], FilterRules[{opts}, Options[CausalStatesGraph]]
     ]

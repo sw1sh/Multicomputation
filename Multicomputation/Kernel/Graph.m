@@ -90,7 +90,7 @@ SetAttributes[EvolutionGraph, HoldFirst]
 
 EvolutionGraph[multi_Multi, steps_Integer : 1, lvl_Integer : 2, opts : OptionsPattern[]] := Block[{i = 0, holdQ = TrueQ[OptionValue["Hold"]]},
     Graph[
-        multi["Expression"],
+        Developer`ToList[multi["Expression"]],
         DeleteCases[Except[_DirectedEdge]] @ Flatten @ Reap[
             Nest[
                 Function[
@@ -128,7 +128,7 @@ EvolutionGraph[multi_Multi, steps_Integer : 1, lvl_Integer : 2, opts : OptionsPa
 ]
 
 
-Options[CausalGraph] = Join[{"IncludeInitialEvent" -> True, "TransitiveReduction" -> True, "EdgeDeduplication" -> True}, Options[Graph]]
+Options[CausalGraph] = Join[{"IncludeInitialEvent" -> True, "TransitiveReduction" -> True, "EdgeDeduplication" -> True, "CanonicalizeStates" -> True}, Options[Graph]]
 
 CausalGraph[g_, type : _String | None : None, opts : OptionsPattern[]] := Enclose @ Block[{gg = g, i = -1, lg, nodes, positions, events, links, repl, mat},
     If[
@@ -147,9 +147,11 @@ CausalGraph[g_, type : _String | None : None, opts : OptionsPattern[]] := Enclos
     events = MapAt[Last, MapAt[First, EdgeList[gg], {{All, 1}, {All, 2}}], {All, 3}];
 	events = Map[MapAt[Append[{"TreePosition" -> #[[2]], "Index" -> #[[1]]}], events[[#[[1]]]], {3}] &, nodes];
     If[ AllTrue[events, KeyExistsQ[#[[3]], "Input"] && KeyExistsQ[#[[3]], "Output"] &],
-        links = Union @ Flatten @ Join[events[[All, 1, All, ;; 1]], events[[All, 1, All, 3 ;;]], events[[All, 2, All, ;; 1]], events[[All, 2, All, 3 ;;]]];
-        repl = AssociationThread[links, Range[Length[links]]];
-        events = MapAt[Replace[repl], events, {{All, 3, Key["Input"], All}, {All, 3, Key["Output"], All}, {All, 1, All, 1}, {All, 1, All, 3;;}, {All, 2, All, 1}, {All, 2, All, 3;;}}];
+        If[ TrueQ[OptionValue["CanonicalizeStates"]],
+            links = Union @ Flatten @ Join[events[[All, 1, All, ;; 1]], events[[All, 1, All, 3 ;;]], events[[All, 2, All, ;; 1]], events[[All, 2, All, 3 ;;]]];
+            repl = AssociationThread[links, Range[Length[links]]];
+            events = MapAt[Replace[repl], events, {{All, 3, Key["Input"], All}, {All, 3, Key["Output"], All}, {All, 1, All, 1}, {All, 1, All, 3;;}, {All, 2, All, 1}, {All, 2, All, 3;;}}]
+        ];
         If[!TrueQ[OptionValue["IncludeInitialEvent"]], events = DeleteCases[events, DirectedEdge[{{_, _Missing}}, __]]];
         mat = Outer[
             Boole[#1["Step"] < #2["Step"] && MatchQ[#2["TreePosition"], Append[#1["TreePosition"], __]] && IntersectingQ[#1["Output"], #2["Input"]]] &,
@@ -264,14 +266,14 @@ MultiTokenEventGraph[cg_Graph, type : _String | None : None, opts : OptionsPatte
 
 Options[CausalStatesGraph] = Join[{"TransitiveReduction" -> False}, Options[Graph]];
 
-CausalStatesGraph[cg_Graph, opts : OptionsPattern[]] := Graph[
-	VertexList[cg],
+CausalStatesGraph[cg_, opts : OptionsPattern[]] := Graph[
+	Most[VertexList[cg]],
     FilterRules[{opts, VertexSize -> 128}, Options[Graph]],
 	VertexShapeFunction -> Function[
 		Inset[Tooltip[Framed[
 			If[TrueQ[OptionValue["TransitiveReduction"]], TransitiveReductionGraph, Identity] @ VertexInComponentGraph[
 				cg,
-				VertexList[cg, DirectedEdge[#2, __] | DirectedEdge[_,#2,___]],
+				VertexList[cg, DirectedEdge[_, Interpretation[#2, _] | #2,___]],
 				EdgeStyle -> Directive[
 					Arrowheads[0.05],
 					ResourceFunction["WolframPhysicsProjectStyleData"]["CausalGraph"]["EdgeStyle"]
@@ -282,6 +284,7 @@ CausalStatesGraph[cg_Graph, opts : OptionsPattern[]] := Graph[
 			#1
 		]
 	],
+    GraphLayout -> "LayeredDigraphEmbedding",
     PerformanceGoal -> "Quality"
-]
+] // VertexReplace[#, Catenate @ KeyValueMap[Thread[#2 -> #1, List, 1] &] @ GroupBy[VertexList[#], Replace[Interpretation[e_, _] :> e]]] &
 

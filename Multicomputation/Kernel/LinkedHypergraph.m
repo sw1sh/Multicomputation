@@ -120,7 +120,7 @@ UniquifyIndexedTree[tree_Tree] :=
 LinkedHypergraphToTree[hg : {{_, _, ___} ...}, opts : OptionsPattern[]] := TreeMap[Last] @ LinkedHypergraphToIndexedTree[hg, opts]
 
 
-ListToLinkedHypergraph[l_] := With[{len = Length[l]}, Append[{len, Last[l], 0}] @ MapThread[{#1, #2, #1 + 1} &, {Range[len - 1], Most[l]}]]
+ListToLinkedHypergraph[l_] := With[{len = Length[l]}, If[len == 0, {}, Append[{len, Last[l], 0}] @ MapThread[{#1, #2, #1 + 1} &, {Range[len - 1], Most[l]}]]]
 
 LinkedHypergraphToList[hg : {{_, _, ___} ...}, OptionsPattern[]] := Enclose @ DeleteMissing @ Map[Last] @ FindHamiltonianPath @ ConfirmBy[LinkedHypergraphToGraph[hg], PathGraphQ[#] || EmptyGraphQ[#] &]
 
@@ -228,7 +228,7 @@ FromLinkedHypergraph[hg : {{_, _, ___} ...}, type_String : "Graph", opts : Optio
 	"Expression" | "ConstructExpression",
 	Enclose @ TreeExpression[Confirm @ LinkedHypergraphToTree[hg, opts], "Heads"],
 	"HoldExpression",
-	Enclose[HoldForm @@ TreeExpression[Confirm @ LinkedHypergraphToTree[hg, opts], "HeldHeads"]],
+	Enclose[HoldForm @@ TreeExpression[Confirm @ LinkedHypergraphToTree[hg, opts], "HeldHeads"] //. HoldPattern[Construct[f_, x_]] :> f[x]],
 	"List",
 	LinkedHypergraphToList[hg, opts],
 	"String",
