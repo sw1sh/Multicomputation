@@ -41,7 +41,7 @@ MultiProp[multi_, "HoldExpression"] := Extract[multi["Data"], "Expression", Hold
 
 MultiProp[multi_, "Keys"] := Join[List /@ Keys @ multi["Values"], Keys @ multi["Matches"]]
 
-MultiProp[multi_, "Positions"] := Replace[{{pos : {_Integer ...}, __} :> pos, pos : {_Integer ...} :> pos}] /@
+MultiProp[multi_, "Positions"] := Replace[{{pos : {{_Integer ...} ...}, __} :> pos, pos : {{_Integer ...} ...} :> pos}] /@
     Join[Keys @ multi["Values"], Keys @ multi["Matches"]]
 
 
@@ -117,7 +117,7 @@ MultiProp[multi_, "EvaluateListOnce"] := With[{pos = multi["Positions"]},
                 {pos, subExprs, subst} |-> With[{
                     expr = Unevaluated @@ (multi["HoldExpression"] /. subst)
                 },
-                    ReplacePart[expr, pos -> #] & /@ Replace[subExprs, e : Except[_List] :> {e}]
+                    ReplacePart[expr, pos -> #] & /@ Developer`ToList[subExprs]
                 ],
                 {Replace[{} -> {{}}] /@ multi["Positions"], #1, #2}
             ] &,
@@ -208,7 +208,7 @@ MultiProp[multi_, "MultiList"] := With[{
                 With[{newData = <|
                     multi["Data"],
                     "Values" -> KeyMap[Drop[#, UpTo[1]] &] @ KeySelect[multi["Values"], Take[#, UpTo[1]] == k &],
-                    "Matches" -> KeyMap[MapAt[Drop[#, UpTo[1]] &, {1}]] @ KeySelect[multi["Matches"], Take[First[#], UpTo[1]] == k &]
+                    "Matches" -> KeyMap[MapAt[Drop[#, UpTo[1]] &, {1, All}]] @ KeySelect[multi["Matches"], MemberQ[First[#], k] &]
                     |>
                 },
                     With[{data = <|newData, "Expression" :> v|>},
@@ -270,7 +270,7 @@ If[
     MatchQ[multi["HoldExpression"], _[_head]],
     Module[{i = 1},
         ReleaseHold @ ResourceFunction["MapAtEvaluate"][
-            Function[Null, {If[Length[#] > 0, MapAt[Prepend[i++], #, {All, 1}], #] &[#["Keys"]], #["EvaluateListOnce"]}, HoldAllComplete],
+            Function[Null, {If[Length[#] > 0, MapAt[Prepend[i++], #, {All, 1, All}], #] &[#["Keys"]], #["EvaluateListOnce"]}, HoldAllComplete],
             multi["MultiList"],
             {1, All}
         ]

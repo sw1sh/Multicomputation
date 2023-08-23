@@ -31,11 +31,11 @@ MultiDataQ[data_Association] := MatchQ[data, KeyValuePattern[{
     "Values" -> <||> | KeyValuePattern[_[{_Integer ...}, _]],
     "Matches" -> <||> |
         KeyValuePattern[_[
-            {{_Integer ...}, _String, Repeated[_Rule | RuleDelayed, {0, 1}]},
+            {{{_Integer ...} ...}, _String, Repeated[_Rule | RuleDelayed, {0, 1}]},
             {(_Rule | _RuleDelayed | None) ..}
         ]] |
         KeyValuePattern[
-            _[{{_Integer ...}, "Rule", {_Integer, {<||> | KeyValuePattern[_Pattern :> _] ..}}}, {__}]
+            _[{{{_Integer ...} ...}, "Rule", {_Integer, {<||> | KeyValuePattern[_Pattern :> _] ..}}}, {__}]
         ],
     "Rules" -> {(_Rule | _RuleDelayed) ...},
     "EvaluateOptions" -> OptionsPattern[],
@@ -114,7 +114,7 @@ With[{
     Multi[<|
         multi["Data"],
         "Rules" -> rules,
-        "Matches" -> Join[multi["Matches"], Association @ KeyValueMap[{First @ #1[[2]], "Rule", Drop[#1, {2}]} -> #2 &, matches]],
+        "Matches" -> Join[multi["Matches"], Association @ KeyValueMap[{#1[[2]], "Rule", Drop[#1, {2}]} -> #2 &, matches]],
         "EvaluateOptions" -> FilterRules[{opts}, Options[MultiEvaluate]],
         "ReplaceArguments" -> Sequence[arg, head],
         "ReplaceOptions" -> FilterRules[{opts}, Options[MultiReplace]]
@@ -165,7 +165,7 @@ multi_Multi[args___] /; multi["ValidQ"] := Function[Null,
     With[{
         newData = <|data,
         "Values" -> KeyMap[Prepend[0], data["Values"]],
-        "Matches" -> KeyMap[MapAt[Prepend[0], {1}], data["Matches"]]
+        "Matches" -> KeyMap[MapAt[Prepend[0], {1, All}], data["Matches"]]
     |>},
         If[ !FreeQ[Unevaluated @ expr[args], _Multi, 1, Heads -> False],
             With[{newMulti = MultiPlaceholder[Unique[]][args]},
@@ -189,7 +189,7 @@ With[{
     With[{data = multi["Data"]},
     With[{newData = <|data,
          "Values" -> KeyMap[Prepend[i], data["Values"]],
-         "Matches" -> KeyMap[MapAt[Prepend[i], {1}], data["Matches"]]
+         "Matches" -> KeyMap[MapAt[Prepend[i], {1, All}], data["Matches"]]
     |>},
         If[ !FreeQ[Unevaluated @ f[left, subExpr, right], _Multi, 1, Heads -> False],
             With[{newMulti = (f @@ (Unevaluated /@ Hold[left, subExpr, right]))},

@@ -349,7 +349,7 @@ ApplyHypergraphRules[x_, rules_, opts : OptionsPattern[]] := With[{
                 "Input" -> destroyed, "Output" -> created, "Rule" -> #1[[1]], "Position" -> #1[[2]]
             |> -> state
         ] &,
-        MultiReplace[x, rules, {1}, FilterRules[{opts}, Options[MultiReplace]]]
+        MultiReplace[x, rules, {1}, FilterRules[{opts}, Options[MultiReplace]], "Mode" -> "Subsets"]
     ]
 ]
 

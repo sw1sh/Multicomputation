@@ -38,8 +38,37 @@ HoldPositionQ[expr_, i_] := With[{pos = HoldPosition[Unevaluated[expr]]}, Missin
 
 
 SequenceHoldQ[sym_Symbol[___]] := MemberQ[Attributes[sym], SequenceHold]
-SequenceHoldQ[Verbatim[Function][_, _, attrs___][args___]] := MemberQ[attrs, SequenceHold]
+SequenceHoldQ[Verbatim[Function][_, _, attrs___][args___]] := MemberQ[{attrs}, SequenceHold]
 SequenceHoldQ[_] := False
+
+
+HoldRangeFromAttributes[attrs_, len_] :=
+    Which[
+        MemberQ[attrs, HoldAll | HoldAllComplete] || ContainsAll[attrs, {HoldFirst, HoldRest}],
+        {1, len},
+        MemberQ[attrs, HoldFirst],
+        {1, 1},
+        MemberQ[attrs, HoldRest],
+        {2, len},
+        True,
+        {1, 0}
+    ]
+
+HoldRange[sym_Symbol[args___]] := HoldRangeFromAttributes[Attributes[sym], Length[HoldComplete[args]]]
+HoldRange[Verbatim[Function][_, _, attrs___][args___]] := HoldRangeFromAttributes[Flatten[{attrs}], Length[HoldComplete[args]]]
+HoldRange[_[___]] := {1, 0}
+HoldRange[___] := Missing["Position"]
+
+HoldRangeQ[expr_, i_] := With[{range = HoldRange[Unevaluated[expr]]},
+    MissingQ[range] || Between[i, range]
+]
+
+
+SequenceHoldQ[sym_Symbol[___]] := MemberQ[Attributes[sym], SequenceHold]
+SequenceHoldQ[Verbatim[Function][_, _, attrs___][args___]] := MemberQ[Flatten[{attrs}], SequenceHold]
+SequenceHoldQ[_] := False
+
+IntervalSpan[i_Interval, len_] :=  Min[Max[1, Min[i]], len] ;; Max[Min[len, Max[i]], len]
 
 
 HeadDepth[expr_, head_ : List] := If[
