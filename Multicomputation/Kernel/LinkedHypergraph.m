@@ -128,16 +128,13 @@ StringToLinkedHypergraph[s_] := ListToLinkedHypergraph[Characters[s]]
 
 LinkedHypergraphToString[hg : {{_, _, ___} ...}, OptionsPattern[]] := Enclose @ StringJoin[ToString /@ ConfirmBy[LinkedHypergraphToList[hg], ListQ]]
 
-PatternToLinkedHypergraph[Verbatim[Condition][expr_, test_], patt_ : None] := Condition @@ Hold[PatternToLinkedHypergraph[Unevaluated[expr], patt], test]
 
-PatternToLinkedHypergraph[expr : Except[_Condition], patt_ : None] := If[patt === None,
+PatternToLinkedHypergraph[expr_, patt_ : None] := If[patt === None,
 	TreeToLinkedHypergraph[ExpressionTree[Unevaluated[expr]]],
 	With[{map = AssociationThread[#, Table[Unique[], Length[#]]] & @ Cases[Unevaluated[expr], patt, All]},
 		ReplaceAt[Reverse /@ Normal @ map, {All, 2}] @ TreeToLinkedHypergraph[With[{newExpr = Unevaluated @@ (Hold[expr] /. map)}, ExpressionTree[newExpr]]]
 	]
 ]
-
-ConstructPatternToLinkedHypergraph[Verbatim[Condition][expr_, test_], patt_ : None] := Condition @@ Hold[ConstructPatternToLinkedHypergraph[Unevaluated[expr], patt], test]
 
 ConstructPatternToLinkedHypergraph[expr_, patt_ : None] := If[patt === None,
 	TreeToLinkedHypergraph[ExpressionTree[Unevaluated[expr], "Atoms", Heads -> True]],
@@ -187,15 +184,21 @@ ToLinkedHypergraph[expr_, autoType : _String | Automatic : Automatic] := With[{t
 			"Hypergraph",
 			HypergraphRuleToLinkedHypergraphRule[expr],
 			"ConstructExpression",
-			Rule @@ {
-				ConstructPatternToLinkedHypergraph[expr[[1]], PatternHead[___]],
-				Function[Null, ConstructPatternToLinkedHypergraph[Unevaluated[#], PatternHead[___]], HoldAll] @@ Extract[expr, {2}, Hold]
-			},
+			If[	MatchQ[Unevaluated[expr], _[_, _Condition]],
+				Function[Null, Condition[Evaluate @ ConstructPatternToLinkedHypergraph[expr[[1]], PatternHead[___]], #2] :> {{1, #1}}, HoldAll] @@ expr[[2]],
+				Rule @@ {
+					ConstructPatternToLinkedHypergraph[expr[[1]], PatternHead[___]],
+					Function[Null, ConstructPatternToLinkedHypergraph[Unevaluated[#], PatternHead[___]], HoldAll] @@ Extract[expr, {2}, Hold]
+				}
+			],
 			_,
-			Rule @@ {
-				PatternToLinkedHypergraph[expr[[1]], PatternHead[___]],
-				Function[Null, PatternToLinkedHypergraph[Unevaluated[#], PatternHead[___]], HoldAll] @@ Extract[expr, {2}, Hold]
-			}
+			If[	MatchQ[Unevaluated[expr], _[_, _Condition]],
+				Function[Null, Condition[Evaluate @ PatternToLinkedHypergraph[expr[[1]], PatternHead[___]], #2] :> {{1, #1}}, HoldAll] @@ expr[[2]],
+				Rule @@ {
+					PatternToLinkedHypergraph[expr[[1]], PatternHead[___]],
+					Function[Null, PatternToLinkedHypergraph[Unevaluated[#], PatternHead[___]], HoldAll] @@ Extract[expr, {2}, Hold]
+				}
+			]
 		],
 		Switch[type,
 			"Graph",
@@ -353,7 +356,7 @@ ApplyHypergraphRules[x_, rules_, opts : OptionsPattern[]] := With[{
     ]
 ]
 
-Options[HypergraphMulti] = Options[ApplyHypergraphRules]
+Options[HypergraphMulti] = Join[Options[ApplyHypergraphRules], $MultiOptions]
 HypergraphMulti[init_, rule_, autoType: Except[OptionsPattern[]] : Automatic, opts : OptionsPattern[]] := Enclose @ Block[{
 	rules = wrap[rule], type
 },
@@ -361,12 +364,14 @@ HypergraphMulti[init_, rule_, autoType: Except[OptionsPattern[]] : Automatic, op
 	With[{
 		multReplaceRules = Map[ToLinkedHypergraph[#, type] & /* LinkedHypergraphRuleToPatternRule /* PatternRuleToMultiReplaceRule, rules],
 		hypergraphQ = type === "Hypergraph",
-		listInit = Unevaluated @@ If[MatchQ[Unevaluated[init], {{___List}}] || type === "List" && MatchQ[Unevaluated[init], {___List}], Hold[init], Hold[{init}]]
+		listInit = Unevaluated @@ If[MatchQ[Unevaluated[init], {{___List}}] || type === "List" && MatchQ[Unevaluated[init], {___List}], Hold[init], Hold[{init}]],
+		applyOptions = FilterRules[{opts}, Options[ApplyHypergraphRules]]
 	},
 		Multi[
 			Function[Null, ToLinkedHypergraph[Unevaluated[#], type], HoldAll] /@ listInit,
-			RuleDelayed @@ Hold[\[FormalCapitalH]_, ApplyHypergraphRules[\[FormalCapitalH], multReplaceRules, opts, "Hypergraph" -> hypergraphQ]],
-			{1}
+			RuleDelayed @@ Hold[\[FormalCapitalH]_, ApplyHypergraphRules[\[FormalCapitalH], multReplaceRules, applyOptions, "Hypergraph" -> hypergraphQ]],
+			{1},
+			FilterRules[{opts}, $MultiOptions]
 		]
 	]
 ]

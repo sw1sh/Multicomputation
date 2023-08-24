@@ -21,7 +21,7 @@ m : MultiwaySystem[rules_, init_, OptionsPattern[]] /; ! MultiwaySystemQ[Unevalu
         Automatic -> {Switch[type, "Hypergraph", WolframModelMulti, "String", StringMulti, _, HypergraphMulti], {}},
         "Hypergraph" | {"Hypergraph", opts : OptionsPattern[]} -> {WolframModelMulti, {opts}},
         "String" | {"String", opts : OptionsPattern[]} -> {StringMulti, {opts}},
-        {_, opts : OptionsPattern[]} | _ -> {HypergraphMulti, {opts}}
+        {_, opts : OptionsPattern[]} | _ :> {HypergraphMulti, {opts}}
     }];
     MultiwaySystem[
         Evaluate[method[Unevaluated[init], rules, methodOpts]],
