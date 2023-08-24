@@ -321,6 +321,7 @@ ApplyHypergraphRules[x_, rules_, opts : OptionsPattern[]] := With[{
 		_[_, {rhs___} | rhs___] :> Total @ Replace[
 			Unevaluated[{rhs}], {
 				Verbatim[Module][_, Splice[splice_List]] :> Length[Unevaluated[splice]],
+				Nothing -> 0,
 				_ -> 1
 			},
 			{1}
