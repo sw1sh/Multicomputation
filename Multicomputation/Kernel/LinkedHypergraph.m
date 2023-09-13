@@ -314,7 +314,7 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
 	ReplaceAt[newRule /. Verbatim[Module][{}, body_] :> body, Splice[body_] :> body, {2}]
 ]
 
-Options[ApplyHypergraphRules] = Join[{"Hypergraph" -> True, "Evaluate" -> False, "Mode" -> "OrderlessSubsets"}, Options[MultiReplace]]
+Options[ApplyHypergraphRules] = Join[{"Hypergraph" -> True, "Evaluate" -> False, "Mode" -> "OrderlessSubsets", "ProcessMatches" -> Identity}, Options[MultiReplace]]
 ApplyHypergraphRules[x_, rules_, opts : OptionsPattern[]] := With[{
 	rhsLengths = Replace[
 		rules,
@@ -353,7 +353,7 @@ ApplyHypergraphRules[x_, rules_, opts : OptionsPattern[]] := With[{
                 "Input" -> destroyed, "Output" -> created, "Rule" -> #1[[1]], "Position" -> #1[[2]]
             |> -> state
         ] &,
-        MultiReplace[x, rules, {1}, FilterRules[{opts}, Options[MultiReplace]], "Mode" -> "Subsets"]
+        OptionValue["ProcessMatches"] @ MultiReplace[x, rules, {1}, FilterRules[{opts}, Options[MultiReplace]], "Mode" -> "Subsets"]
     ]
 ]
 
