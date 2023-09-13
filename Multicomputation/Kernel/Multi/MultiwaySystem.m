@@ -277,10 +277,10 @@ canonicalizeStates[g_, type_, opts : OptionsPattern[]] := With[{
         Graph[
             VertexReplace[g, state : Except[_DirectedEdge] :> stateCanonicalFunction[state]],
             FilterRules[{opts}, Options[Graph]],
-            VertexShapeFunction -> Except[_DirectedEdge] -> If[
-                OptionValue["CanonicalStateFunction"] === Automatic,
-                $StateVertexShapeFunction,
-                (Tooltip[$StateVertexShapeFunction[#1, FromLinkedHypergraph[#2, type], #3], #2] &)
+            VertexShapeFunction -> Except[_DirectedEdge] -> Switch[
+                OptionValue["CanonicalStateFunction"],
+                Automatic | Full, (Tooltip[$StateVertexShapeFunction[##], #2] &),
+                _, (Tooltip[$StateVertexShapeFunction[#1, FromLinkedHypergraph[#2, type], #3], #2] &)
             ]
         ]
     ]
