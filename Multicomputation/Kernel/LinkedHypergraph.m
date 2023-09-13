@@ -129,7 +129,7 @@ StringToLinkedHypergraph[s_] := ListToLinkedHypergraph[Characters[s]]
 LinkedHypergraphToString[hg : {{_, _, ___} ...}, OptionsPattern[]] := Enclose @ StringJoin[ToString /@ ConfirmBy[LinkedHypergraphToList[hg], ListQ]]
 
 
-PatternToLinkedHypergraph[expr_, patt_ : None] := If[patt === None,
+PatternToLinkedHypergraph[Verbatim[HoldPattern][expr_] | expr_, patt_ : None] := If[patt === None,
 	TreeToLinkedHypergraph[ExpressionTree[Unevaluated[expr]]],
 	With[{map = AssociationThread[#, Table[Unique[], Length[#]]] & @ Cases[Unevaluated[expr], patt, All]},
 		ReplaceAt[Reverse /@ Normal @ map, {All, 2}] @ TreeToLinkedHypergraph[With[{newExpr = Unevaluated @@ (Hold[expr] /. map)}, ExpressionTree[newExpr]]]
