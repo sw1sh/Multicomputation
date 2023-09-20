@@ -8,19 +8,19 @@ $WFR = {
     <|
         "Name" -> "MultiEvaluate",
         "ResourceType" -> "Function",
-        "FunctionLocation" -> CloudObject["https://www.wolframcloud.com/obj/nikm/Resources/3f6/3f6e2e2e-f3a1-452d-9246-3e40bfee86de/download/DefinitionData"],
-        "SymbolName" -> "FunctionRepository`$3f6e2e2ef3a1452d92463e40bfee86de`MultiEvaluate"
+        "FunctionLocation" -> CloudObject["https://www.wolframcloud.com/obj/nikm/Resources/135/13505f23-b475-4250-a08a-1e2d6a9a88ad/download/DefinitionData"],
+        "SymbolName" -> "FunctionRepository`$13505f23b4754250a08a1e2d6a9a88ad`MultiEvaluate"
     |>,
     <|
         "Name" -> "TokenEventGraph",
         "ResourceType" -> "Function",
-        "FunctionLocation" -> CloudObject["https://www.wolframcloud.com/obj/nikm/Resources/815/81552af8-c6fa-496d-8b9c-e0097811b1ce/download/DefinitionData"],
-        "SymbolName" -> "FunctionRepository`$81552af8c6fa496d8b9ce0097811b1ce`TokenEventGraph"
+        "FunctionLocation" -> CloudObject["https://www.wolframcloud.com/obj/cb8a4383-cdcb-4ef0-9b7e-5acd4edbc4e2"],
+        "SymbolName" -> "FunctionRepository`$a01ca9049fdd4b21abf697f2e4a860d8`TokenEventGraph"
     |>
 }
 
 Scan[data |->
-    With[{sym = Symbol[data["Name"]],
+    With[{sym = Symbol[$Context <> data["Name"]],
         wfr = If[MissingQ[data["FunctionLocation"]], ResourceFunction[data["Name"]], ResourceFunction[ResourceObject[data]]]
     },
         sym;

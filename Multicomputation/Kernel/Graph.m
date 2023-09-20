@@ -5,6 +5,7 @@ PackageExport["BranchialGraph"]
 PackageExport["CausalGraph"]
 PackageExport["EvolutionCausalGraph"]
 PackageExport["CausalBranchialGraph"]
+PackageExport["EvolutionBranchialGraph"]
 PackageExport["MultiTokenEventGraph"]
 PackageExport["CausalStatesGraph"]
 
@@ -12,9 +13,10 @@ PackageExport["DirectedGraphTree"]
 PackageExport["ToDirectedAcyclicGraph"]
 PackageExport["AddInitState"]
 PackageExport["VertexCompleteGraph"]
-PackageExport["lineGraph"]
 PackageExport["RemoveInitState"]
 PackageExport["RemoveInitEvent"]
+
+PackageScope["lineGraph"]
 
 
 
@@ -184,6 +186,7 @@ CausalGraph[g_, type : _String | None : None, opts : OptionsPattern[]] := Enclos
     If[ !TrueQ[OptionValue["EdgeDeduplication"]],
         gg = EdgeAdd[gg, Catenate[Table[#, Max[0, Length[Intersection[#[[1, 3]]["Output"], #[[2, 3]]["Input"]]] - 1]] & /@ EdgeList[gg]]]
     ];
+    (* gg = Graph[VertexList[gg], Insert[#, Intersection[#[[1, 3]]["Output"], #[[2, 3]]["Input"]], 3] & /@ EdgeList[gg], Options[gg]]; *)
     gg
 ]
 
@@ -230,13 +233,30 @@ CausalBranchialGraph[cg_Graph, n_Integer : 1, opts : OptionsPattern[]] := Block[
     Graph[
         EdgeAdd[cg, slideBranchEdges],
         opts,
+        VertexCoordinates -> Thread[VertexList[cg] -> GraphEmbedding[cg]],
         EdgeShapeFunction -> (#1 -> Function[{
-            ResourceFunction["WolframPhysicsProjectStyleData"]["BranchialGraph"]["EdgeStyle"], If[Equal @@ #1[[{1, -1}]], Nothing, StadiumShape[#1[[{1, -1}]], .05]]}
+            ResourceFunction["WolframPhysicsProjectStyleData"]["BranchialGraph"]["EdgeStyle"], If[Equal @@ #1[[{1, -1}]], Nothing, {Thick, Dashed, Line[#1[[{1, -1}]]]}]}
         ] &) /@ slideBranchEdges
     ]
 ]
 
-Options[MultiTokenEventGraph] = Join[{"IncludeInitialState" -> True, "IncludeInitialEvent" -> True}, Options[Graph]]
+EvolutionBranchialGraph[g_Graph, opts : OptionsPattern[]] := Block[{
+    branchEdges = SubsetCases[EdgeList[g], {
+        DirectedEdge[_, a_, KeyValuePattern[{"Input" -> x_, "TreePosition" -> {p___, _}}]],
+        DirectedEdge[_, b_, KeyValuePattern[{"Input" -> y_, "TreePosition" -> {p___, _}}]]
+    } /; IntersectingQ[x, y] :> UndirectedEdge[a, b], Overlaps -> True]
+},
+    Graph[
+        EdgeAdd[g, branchEdges],
+        opts,
+        VertexCoordinates -> Thread[VertexList[g] -> GraphEmbedding[g]],
+        EdgeShapeFunction -> (#1 -> Function[{
+            ResourceFunction["WolframPhysicsProjectStyleData"]["BranchialGraph"]["EdgeStyle"], If[Equal @@ #1[[{1, -1}]], Nothing, {Thick, Dashed, Line[#1[[{1, -1}]]]}]}
+        ] &) /@ branchEdges
+    ]
+]
+
+Options[MultiTokenEventGraph] = Join[{"IncludeInitialState" -> True, "IncludeInitialEvent" -> True, "CausalEdges" -> False}, Options[Graph]]
 MultiTokenEventGraph[cg_Graph, type : _String | None : None, opts : OptionsPattern[]] := Block[{
     edges = Flatten @ Replace[
         VertexList[cg],
@@ -254,6 +274,7 @@ MultiTokenEventGraph[cg_Graph, type : _String | None : None, opts : OptionsPatte
         edges = DeleteCases[edges, DirectedEdge[{_, _Missing}, __] | DirectedEdge[_, {_, _Missing}, ___]]
     ];
     Graph[
+        If[TrueQ[OptionValue["CausalEdges"]], Identity, EdgeDelete[#, DirectedEdge[_DirectedEdge, _DirectedEdge, ___]] &] @
         If[TrueQ[OptionValue["IncludeInitialEvent"]], Identity, VertexDelete[#, DirectedEdge[{{_, _Missing}}, __]] &] @
             EdgeAdd[cg, edges, VertexLabels -> None],
         FilterRules[{opts}, Options[Graph]],

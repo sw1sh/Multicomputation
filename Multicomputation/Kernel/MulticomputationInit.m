@@ -1,5 +1,5 @@
 BeginPackage["Wolfram`MulticomputationInit`"]
 
-Get[FileNameJoin[{DirectoryName[$InputFileName], "WFR.m"}]]
+Quiet @ Get[FileNameJoin[{DirectoryName[$InputFileName], "WFR.m"}]]
 
 EndPackage[]

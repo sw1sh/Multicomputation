@@ -103,11 +103,11 @@ LinkedHypergraphToRootTree[hg : {{_, ___} ...}, root_, opts : OptionsPattern[]] 
 
 
 LinkedHypergraphToIndexedTree[hg : {{_, ___} ...}, opts : OptionsPattern[]] := With[{map = Select[Length[#] > 0 &] @ GroupBy[hg, First, Rest @* First]},
-	Tree[linkedHypergraphToTree[First @ Complement[Keys[map], Catenate @ Values[map[[All, 2 ;;]]]], map], opts]
+	Tree[linkedHypergraphToTree[First[Complement[Keys[map], Catenate @ Values[map[[All, 2 ;;]]]], Missing[]], map], opts]
 ]
 
 LinkedHypergraphRoot[hg : {{_, ___} ...}] := With[{map = Select[Length[#] > 1 &] @ GroupBy[hg, First, First]},
-	map[First @ Complement[Keys[map], Catenate @ Values[map[[All, 3 ;;]]]]]
+	map[First[Complement[Keys[map], Catenate @ Values[map[[All, 3 ;;]]]], Missing[]]]
 ]
 
 UniquifyIndexedTree[tree_Tree] :=
@@ -130,16 +130,16 @@ LinkedHypergraphToString[hg : {{_, _, ___} ...}, OptionsPattern[]] := Enclose @ 
 
 
 PatternToLinkedHypergraph[Verbatim[HoldPattern][expr_] | expr_, patt_ : None] := If[patt === None,
-	TreeToLinkedHypergraph[ExpressionTree[Unevaluated[expr]]],
+	TreeToLinkedHypergraph[ExpressionTree[Unevaluated[expr], "HeldHeads"]],
 	With[{map = AssociationThread[#, Table[Unique[], Length[#]]] & @ Cases[Unevaluated[expr], patt, All]},
-		ReplaceAt[Reverse /@ Normal @ map, {All, 2}] @ TreeToLinkedHypergraph[With[{newExpr = Unevaluated @@ (Hold[expr] /. map)}, ExpressionTree[newExpr]]]
+		ReplaceAt[Reverse /@ Normal @ map, {All, 2, 1}] @ TreeToLinkedHypergraph[With[{newExpr = Unevaluated @@ (Hold[expr] /. map)}, ExpressionTree[newExpr, "HeldHeads"]]]
 	]
 ]
 
 ConstructPatternToLinkedHypergraph[expr_, patt_ : None] := If[patt === None,
-	TreeToLinkedHypergraph[ExpressionTree[Unevaluated[expr], "Atoms", Heads -> True]],
+	TreeToLinkedHypergraph[ExpressionTree[Unevaluated[expr], "HeldAtoms", Heads -> True]],
 	With[{map = AssociationThread[#, Table[Unique[], Length[#]]] & @ Cases[Unevaluated[expr], patt, All, Heads -> True]},
-		ReplaceAt[Reverse /@ Normal @ map, {All, 2}] @ TreeToLinkedHypergraph[TreeMap[Replace[Null -> Construct]] @ With[{newExpr = Unevaluated @@ (Hold[expr] /. map)}, ExpressionTree[newExpr, "Atoms", Heads -> True]]]
+		ReplaceAt[Reverse /@ Normal @ map, {All, 2, 1}] @ TreeToLinkedHypergraph[TreeMap[Replace[Null -> HoldComplete[Construct]]] @ With[{newExpr = Unevaluated @@ (Hold[expr] /. map)}, ExpressionTree[newExpr, "HeldAtoms", Heads -> True]]]
 	]
 ]
 
@@ -185,19 +185,27 @@ ToLinkedHypergraph[expr_, autoType : _String | Automatic : Automatic] := With[{t
 			HypergraphRuleToLinkedHypergraphRule[expr],
 			"ConstructExpression",
 			If[	MatchQ[Unevaluated[expr], _[_, _Condition]],
-				Function[Null, Condition[Evaluate @ ConstructPatternToLinkedHypergraph[expr[[1]], PatternHead[___]], #2] :> {{1, #1}}, HoldAll] @@ expr[[2]],
-				Rule @@ {
-					ConstructPatternToLinkedHypergraph[expr[[1]], PatternHead[___]],
-					Function[Null, ConstructPatternToLinkedHypergraph[Unevaluated[#], PatternHead[___]], HoldAll] @@ Extract[expr, {2}, Hold]
-				}
+				Function[Null, Condition[ReplaceAt[Evaluate @ ConstructPatternToLinkedHypergraph[expr[[1]], PatternHead[___]], HoldComplete[e_] :> e, {All, 2}], #2] :> {{1, #1}}, HoldAll] @@ ReplacePart[expr, {2, 0} -> Hold][[2]],
+				ReplaceAt[
+					RuleDelayed @@ {
+						ConstructPatternToLinkedHypergraph[expr[[1]], PatternHead[___]],
+						Function[Null, ConstructPatternToLinkedHypergraph[Unevaluated[#], PatternHead[___]], HoldAll] @@ Extract[expr, {2}, Hold]
+					},
+					HoldComplete[e_] :> e,
+					{All, All, 2}
+				]
 			],
 			_,
 			If[	MatchQ[Unevaluated[expr], _[_, _Condition]],
-				Function[Null, Condition[Evaluate @ PatternToLinkedHypergraph[expr[[1]], PatternHead[___]], #2] :> {{1, #1}}, HoldAll] @@ expr[[2]],
-				Rule @@ {
-					PatternToLinkedHypergraph[expr[[1]], PatternHead[___]],
-					Function[Null, PatternToLinkedHypergraph[Unevaluated[#], PatternHead[___]], HoldAll] @@ Extract[expr, {2}, Hold]
-				}
+				Function[Null, Condition[ReplaceAt[Evaluate @ PatternToLinkedHypergraph[expr[[1]], PatternHead[___]], HoldComplete[e_] :> e, {All, 2}], #2] :> {{1, #1}}, HoldAll] @@ ReplacePart[expr, {2, 0} -> Hold][[2]],
+				ReplaceAt[
+					RuleDelayed @@ {
+						PatternToLinkedHypergraph[expr[[1]], PatternHead[___]],
+						Function[Null, PatternToLinkedHypergraph[Unevaluated[#], PatternHead[___]], HoldAll] @@ Extract[expr, {2}, Hold]
+					},
+					HoldComplete[e_] :> e,
+					{All, All, 2}
+				]
 			]
 		],
 		Switch[type,
@@ -212,9 +220,9 @@ ToLinkedHypergraph[expr_, autoType : _String | Automatic : Automatic] := With[{t
 			"List",
 			ListToLinkedHypergraph[Unevaluated[expr]],
 			"ConstructExpression",
-			ConstructPatternToLinkedHypergraph[Unevaluated[expr], PatternHead[___]],
+			ReplaceAt[HoldComplete[e_] :> e, {All, 2}] @ ConstructPatternToLinkedHypergraph[Unevaluated[expr], PatternHead[___]],
 			_,
-			PatternToLinkedHypergraph[Unevaluated[expr], PatternHead[___]]
+			ReplaceAt[HoldComplete[e_] :> e, {All, 2}] @ PatternToLinkedHypergraph[Unevaluated[expr], PatternHead[___]]
 		]
 	]
 ]
@@ -222,10 +230,12 @@ ToLinkedHypergraph[expr_, autoType : _String | Automatic : Automatic] := With[{t
 ToLinkedHypergraph[expr_, patt_] := PatternToLinkedHypergraph[expr, patt]
 
 
-FromLinkedHypergraph[hg : {_List...}, type_String : "Graph", opts : OptionsPattern[]] := FromLinkedHypergraph[Select[hg, Length[#] > 1 &], type, opts]
+FromLinkedHypergraph[hg : {_List...}, type : _String | None : "Graph", opts : OptionsPattern[]] := FromLinkedHypergraph[Select[hg, Length[#] > 1 &], type, opts]
 
-FromLinkedHypergraph[hg : {{_, _, ___} ...}, type_String : "Graph", opts : OptionsPattern[]] := Switch[
+FromLinkedHypergraph[hg : {{_, _, ___} ...}, type : _String | None : "Graph", opts : OptionsPattern[]] := Switch[
 	type,
+	None,
+	hg,
 	"Tree",
 	LinkedHypergraphToTree[hg, opts],
 	"Expression" | "ConstructExpression",
@@ -357,11 +367,11 @@ ApplyHypergraphRules[x_, rules_, opts : OptionsPattern[]] := With[{
     ]
 ]
 
-Options[HypergraphMulti] = Join[Options[ApplyHypergraphRules], $MultiOptions]
-HypergraphMulti[init_, rule_, autoType: Except[OptionsPattern[]] : Automatic, opts : OptionsPattern[]] := Enclose @ Block[{
+Options[HypergraphMulti] = Join[{"Type" -> Automatic}, Options[ApplyHypergraphRules], $MultiOptions]
+HypergraphMulti[init_, rule_, opts : OptionsPattern[]] := Enclose @ Block[{
 	rules = wrap[rule], type
 },
-	type = Replace[autoType, Automatic -> First[ConfirmBy[MultiwayType /@ rules, Apply[Equal], "All rules must have the same type."]]];
+	type = Replace[OptionValue["Type"], Automatic :> First[ConfirmBy[MultiwayType /@ rules, Apply[Equal], "All rules must have the same type."]]];
 	With[{
 		multReplaceRules = Map[ToLinkedHypergraph[#, type] & /* LinkedHypergraphRuleToPatternRule /* PatternRuleToMultiReplaceRule, rules],
 		hypergraphQ = type === "Hypergraph",

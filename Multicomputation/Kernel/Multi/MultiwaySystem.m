@@ -2,6 +2,8 @@ Package["Wolfram`Multicomputation`"]
 
 PackageExport["MultiwaySystemQ"]
 PackageExport["MultiwaySystem"]
+PackageExport["$StateVertexShapeFunction"]
+PackageExport["$EventVertexShapeFunction"]
 
 
 
@@ -42,13 +44,13 @@ MultiwaySystemProp[HoldPattern[MultiwaySystem[multi_, _]], "Multi"] := multi
 MultiwaySystemProp[HoldPattern[MultiwaySystem[_, type_]], "Type"] := type
 
 
-StateShape[hg : {{_Integer, __}...}, size_ : Automatic] := ResourceFunction["WolframModelPlot"][hg, ImageSize -> size, PlotRangePadding -> 0]
+StateShape[hg : {{_Integer, __}...}, size_ : Automatic, opts___] := ResourceFunction["WolframModelPlot"][hg, opts, ImageSize -> size, PlotRangePadding -> 0]
 StateShape[_Missing, ___] := ""
 StateShape[expr_, ___] := expr
 
-$StateVertexShapeFunction = Function[Inset[
+$StateVertexShapeFunction[opts___] := Function[Inset[
     Framed[
-        Style[StateShape[#2, #3], Hue[0.62, 1, 0.48]],
+        Style[StateShape[#2, #3, opts], Hue[0.62, 1, 0.48]],
         Background -> Directive[Opacity[0.2], Hue[0.62, 0.45, 0.87]],
         FrameMargins -> {{2, 2}, {0, 0}},
         FrameStyle -> Directive[Opacity[0.5], Hue[0.62, 0.52, 0.82]],
@@ -65,7 +67,7 @@ Block[{g},
     g = m["Multi"]["Graph", n,
         opts,
         VertexLabels -> Placed[Automatic, Tooltip],
-        VertexShapeFunction -> (Tooltip[$StateVertexShapeFunction[#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3], #2] &),
+        VertexShapeFunction -> (Tooltip[$StateVertexShapeFunction[][#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3], #2] &),
         VertexSize -> If[type === "Hypergraph", 64, Automatic],
         GraphLayout -> "LayeredDigraphEmbedding",
         PerformanceGoal -> "Quality"
@@ -74,7 +76,7 @@ Block[{g},
     g
 ]]
 
-MultiwaySystemProp[m_, "StatesGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[{"IncludeInitialState" -> False}]] := With[{type = m["Type"]},
+MultiwaySystemProp[m_, "StatesGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[Join[{"IncludeInitialState" -> False}, Options[canonicalizeStates], Options[Graph]]]] := With[{type = m["Type"]},
 Block[{g},
     g = Graph[
         m["Expression"],
@@ -88,12 +90,12 @@ Block[{g},
         ],
         FilterRules[{opts}, Options[Graph]],
         VertexLabels -> Placed[Automatic, Tooltip],
-        VertexShapeFunction -> (Tooltip[$StateVertexShapeFunction[#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3], #2] &),
+        VertexShapeFunction -> (Tooltip[$StateVertexShapeFunction[][#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3], #2] &),
         VertexSize -> If[type === "Hypergraph", 64, Automatic],
         GraphLayout -> "LayeredDigraphEmbedding",
         PerformanceGoal -> "Quality"
     ];
-    If[ TrueQ[OptionValue["IncludeInitialState"]],
+    If[ TrueQ[Lookup[{opts}, "IncludeInitialState"]],
         g = EdgeAdd[g, DirectedEdge[{{1, Missing[]}}, #] & /@ m["Expression"]]
     ];
     g = canonicalizeStates[g, type, FilterRules[{opts}, Options[canonicalizeStates]], "CanonicalStateFunction" -> Automatic];
@@ -139,21 +141,26 @@ ListSubstitutionEventShape[DirectedEdge[from_, to_, tag_]] := Framed[
 ]
 
 WolframModelEventShape[DirectedEdge[from_, to_, tag_], size_] := With[{
-    lhs = from[[All, 3 ;;]],
-    rhs = to[[All, 3 ;;]]
+    lhs = Replace[from, {l_, p_, rest___} :> If[p === None, {rest}, {l, HoldForm[p], rest}], {1}],
+    rhs = Replace[to, {l_, p_, rest___} :> If[p === None, {rest}, {l, HoldForm[p], rest}], {1}]
 },
 Framed[
-    Style[
-        If[ lhs === {{}},
+    Row[{
+        If[ DeleteCases[{}] @ lhs === {},
             Graphics[{}, ImageSize -> size / 2],
-            ResourceFunction["WolframModelPlot"][lhs,
-                GraphHighlight -> Extract[lhs, Position[from, {Alternatives @@ tag["Input"], ___}]],
+            ResourceFunction["WolframModelPlot"][DeleteCases[{}] @ lhs,
+                GraphHighlight -> DeleteCases[{}] @ Extract[lhs, Position[from, {Alternatives @@ tag["Input"], ___}]],
                 GraphHighlightStyle -> Dashed,
                 ImageSize -> size / 2
             ]
-        ] ->
-            ResourceFunction["WolframModelPlot"][rhs, GraphHighlight -> Extract[rhs, Position[to, {Alternatives @@ tag["Output"], ___}]], ImageSize -> size / 2]
-    ],
+        ],
+        Graphics[{LightGray, FilledCurve[
+            {{{0, 2, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}}},
+            {{{-1., 0.1848}, {0.2991, 0.1848}, {-0.1531, 0.6363}, {0.109, 0.8982}, {1., 0.0034},
+            {0.109, -0.8982}, {-0.1531, -0.6363}, {0.2991, -0.1848}, {-1., -0.1848}, {-1., 0.1848}}}
+        ]}, ImageSize -> size / 5],
+        ResourceFunction["WolframModelPlot"][DeleteCases[{}] @ rhs, GraphHighlight -> DeleteCases[{}] @ Extract[rhs, Position[to, {Alternatives @@ tag["Output"], ___}]], ImageSize -> size / 2]
+    }],
     Background -> Directive[Opacity[0.7], Hue[0.14, 0.34, 1]],
     FrameMargins -> {{2, 2}, {0, 0}},
     FrameStyle -> Directive[Opacity[0.4], Hue[0.09, 1, 0.91]]
@@ -193,7 +200,31 @@ DefaultEventShape[DirectedEdge[from_, to_, tag_], type_] := Framed[
     FrameStyle -> Directive[Opacity[0.4], Hue[0.09, 1, 0.91]]
 ]
 
-EventShapeFunction[type_] := Switch[
+$EventColumnOptions = {BaseStyle -> 6, Alignment -> Center, Background -> {Opacity[0.8, Hue[0.14, 0.34, 1]], RGBColor[0.9997869066419748, 0.8347064306285127, 0.26312831039590046`]}};
+
+
+TokenEventShape[DirectedEdge[from_, to_, tag_], type_] := Framed[
+    StandardForm @ Style[
+        Block[{
+            lhsPos = tag["Position"],
+            rhsPos = FirstPosition[to, {#, ___}, {1}, Heads -> False] & /@ tag["Output"],
+            lhs, rhs
+        },
+            lhs = Extract[from, lhsPos];
+            rhs = Extract[to, rhsPos];
+            Column[{
+                MapAt[Style[#, Bold] &, {All, 2}] @ lhs,
+                MapAt[Style[#, Bold] &, {All, 2}] @ rhs
+            }, $EventColumnOptions]
+        ],
+        Black
+    ],
+    Background -> Directive[Opacity[0.7], Hue[0.14, 0.34, 1]],
+    FrameMargins -> {{2, 2}, {0, 0}},
+    FrameStyle -> Directive[Opacity[0.4], Hue[0.09, 1, 0.91]]
+]
+
+$EventVertexShapeFunction[type_] := Switch[
     type,
     "String",
     Function[Replace[#2, event : DirectedEdge[Interpretation[_, from_] | from_, Interpretation[_, to_] | to_, tag_] :> Inset[StatusArea[StringSubstitutionEventShape[DirectedEdge[from, to, tag]], tag], #1, {0, 0}]]],
@@ -201,6 +232,8 @@ EventShapeFunction[type_] := Switch[
     Function[Replace[#2, event : DirectedEdge[Interpretation[_, from_] | from_, Interpretation[_, to_] | to_, tag_] :> Inset[StatusArea[ListSubstitutionEventShape[DirectedEdge[from, to, tag]], tag], #1, {0, 0}]]],
     "Hypergraph",
     Function[Replace[#2, event : DirectedEdge[Interpretation[_, from_] | from_, Interpretation[_, to_] | to_, tag_] :> Inset[StatusArea[WolframModelEventShape[DirectedEdge[from, to, tag], #3], tag], #1, {0, 0}]]],
+    "Tokens",
+    Function[Replace[#2, event : DirectedEdge[Interpretation[_, from_] | from_, Interpretation[_, to_] | to_, tag_] :> Inset[StatusArea[TokenEventShape[DirectedEdge[from, to, tag], #3], tag], #1, {0, 0}]]],
     _,
     Function[Replace[#2, event : DirectedEdge[Interpretation[_, from_] | from_, Interpretation[_, to_] | to_, tag_] :> Inset[StatusArea[DefaultEventShape[DirectedEdge[from, to, tag], type], tag], #1, {0, 0}]]]
 ]
@@ -211,7 +244,7 @@ Block[{g},
         FilterRules[{opts}, Options[CausalGraph]],
         "IncludeInitialEvent" -> False,
         VertexLabels -> DirectedEdge[_, _, tag_] :> Placed[tag, Tooltip],
-        VertexShapeFunction -> EventShapeFunction[type],
+        VertexShapeFunction -> $EventVertexShapeFunction[type],
         VertexSize -> If[type === "Hypergraph", 64, Automatic],
         GraphLayout -> "LayeredDigraphEmbedding",
         PerformanceGoal -> "Quality"
@@ -242,8 +275,8 @@ Block[{g},
             DirectedEdge[_, _, tag_] :> Placed[tag, Tooltip]
         },
         VertexShapeFunction -> {
-            _DirectedEdge -> EventShapeFunction[type],
-            Except[_DirectedEdge] -> Function[Tooltip[$StateVertexShapeFunction[#1, #2, #3], #2]]
+            _DirectedEdge -> $EventVertexShapeFunction["Tokens"],
+            Except[_DirectedEdge] -> Function[$StateVertexShapeFunction[][#1, MapAt[Style[#, Bold] &, 2] @ #2, #3]]
         },
         VertexSize -> If[type === "Hypergraph", 64, Automatic],
         GraphLayout -> "LayeredDigraphEmbedding",
@@ -279,8 +312,8 @@ canonicalizeStates[g_, type_, opts : OptionsPattern[]] := With[{
             FilterRules[{opts}, Options[Graph]],
             VertexShapeFunction -> Except[_DirectedEdge] -> Switch[
                 OptionValue["CanonicalStateFunction"],
-                Automatic | Full, (Tooltip[$StateVertexShapeFunction[##], #2] &),
-                _, (Tooltip[$StateVertexShapeFunction[#1, FromLinkedHypergraph[#2, type], #3], #2] &)
+                Automatic | Full, (Tooltip[$StateVertexShapeFunction[][##], #2] &),
+                _, (Tooltip[$StateVertexShapeFunction[][#1, FromLinkedHypergraph[#2, type], #3], #2] &)
             ]
         ]
     ]
@@ -288,14 +321,18 @@ canonicalizeStates[g_, type_, opts : OptionsPattern[]] := With[{
 
 Options[canonicalizeTokens] = Join[{"CanonicalTokenFunction" -> None}, Options[Graph]];
 canonicalizeTokens[g_, type_, opts : OptionsPattern[]] := With[{
-    tokenCanonicalFunction = Replace[OptionValue["CanonicalTokenFunction"], Automatic -> Function[FromLinkedHypergraph[{#}, type]]]
+    tokenCanonicalFunction = Replace[OptionValue["CanonicalTokenFunction"], {
+        Automatic -> Function[FromLinkedHypergraph[{#}, type]],
+        "Canonical" | "CanonicalHypergraph" -> Function[CanonicalLinkedHypergraph[{#}]],
+        Full -> Function[FromLinkedHypergraph[CanonicalLinkedHypergraph[{#}], type]]
+    }]
 },
     If[ tokenCanonicalFunction === None,
         g,
         Graph[
             VertexReplace[g, token : Except[_DirectedEdge] :> tokenCanonicalFunction[token]],
             FilterRules[{opts}, Options[Graph]],
-            VertexShapeFunction -> Except[_DirectedEdge] -> $StateVertexShapeFunction
+            VertexShapeFunction -> Except[_DirectedEdge] -> $StateVertexShapeFunction[]
         ]
     ]
 ]
@@ -304,7 +341,8 @@ Options[canonicalizeEvents] = Join[{"CanonicalEventFunction" -> None}, Options[G
 canonicalizeEvents[g_, type_, opts : OptionsPattern[]] := With[{
     eventCanonicalFunction = Replace[OptionValue["CanonicalEventFunction"], {
         Full -> Function[CanonicalEventFunction[#, type, {}]],
-        Automatic -> Function[CanonicalEventFunction[#, type, {"Input", "Output", "Step"}]]
+        Automatic -> Function[CanonicalEventFunction[#, type, {"Input", "Output", "Step"}]],
+        keys : {___String} :> Function[CanonicalEventFunction[#, None, keys]]
     }]
 },
     If[ eventCanonicalFunction === None,
@@ -320,7 +358,7 @@ canonicalizeEvents[g_, type_, opts : OptionsPattern[]] := With[{
                 VertexLabels -> DirectedEdge[_, _, tag_] :> Placed[tag, Tooltip],
                 VertexShapeFunction -> Normal @ GroupBy[
                     MapThread[
-                        {oldEvent, newEvent} |-> newEvent -> Function[EventShapeFunction[type][#1, oldEvent, #3]],
+                        {oldEvent, newEvent} |-> newEvent -> Function[$EventVertexShapeFunction[type][#1, oldEvent, #3]],
                         {oldEvents, newEvents}
                     ],
                     First,
@@ -346,8 +384,8 @@ With[{type = m["Type"]},
             DirectedEdge[_, _, tag_] :> Placed[tag, Tooltip]
         },
         VertexShapeFunction -> {
-            _DirectedEdge -> EventShapeFunction[type],
-            Except[_DirectedEdge] -> Function[$StateVertexShapeFunction[#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3]]
+            _DirectedEdge -> $EventVertexShapeFunction[type],
+            Except[_DirectedEdge] -> Function[$StateVertexShapeFunction[][#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3]]
         },
         VertexSize -> If[type === "Hypergraph", 64, Automatic],
         GraphLayout -> "LayeredDigraphEmbedding",
@@ -362,9 +400,27 @@ With[{type = m["Type"]},
 MultiwaySystemProp[m_, "EvolutionEventsGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] :=
     EdgeDelete[m["EvolutionCausalGraph", n, opts], DirectedEdge[_DirectedEdge, _DirectedEdge, ___]]
 
-MultiwaySystemProp[m_, "CausalBranchialGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] :=
+MultiwaySystemProp[m_, prop : "EvolutionBranchialGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] := Block[{g},
+    With[{type = m["Type"]},
+        g = EvolutionBranchialGraph[Graph[VertexList[m["Multi"]["CausalGraph", n,
+            FilterRules[{opts}, Options[CausalGraph]],
+            "IncludeInitialEvent" -> False
+        ]]]];
+        g = Graph[g,
+            VertexLabels -> v_ :> Placed[HoldForm[v], Tooltip],
+            VertexShapeFunction -> Function[$StateVertexShapeFunction[][#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3]],
+            VertexSize -> If[type === "Hypergraph", 64, Automatic],
+            GraphLayout -> "LayeredDigraphEmbedding",
+            PerformanceGoal -> "Quality"
+        ];
+        g = canonicalizeStates[g, type, FilterRules[{opts}, Options[canonicalizeStates]]];
+        g
+    ]
+]
+
+MultiwaySystemProp[m_, prop : "CausalBranchialGraph" | "EvolutionCausalBranchialGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] :=
     canonicalizeEvents[
-        CausalBranchialGraph[m["CausalGraph", n, "CanonicalEventFunction" -> None, opts], n, FilterRules[{opts}, Options[CausalBranchialGraph]]],
+        CausalBranchialGraph[m[StringDelete[prop, "Branchial"], n, FilterRules[{opts}, {Options[CausalGraph], Options[EvolutionCausalGraph]}], "CanonicalEventFunction" -> None], FilterRules[{opts}, Options[CausalBranchialGraph]]],
         m["Type"],
         FilterRules[{opts}, Options[canonicalizeEvents]]
     ]
@@ -377,7 +433,7 @@ Block[{g},
             Catenate[UndirectedEdge @@@ ReleaseHold[#]["BranchPairs"] & /@ m["Multi"]["Foliations", n - 1][[1, All, 1]]]
         ],
         EdgeStyle -> ResourceFunction["WolframPhysicsProjectStyleData"]["BranchialGraph"]["EdgeStyle"],
-        VertexShapeFunction -> Function[Tooltip[$StateVertexShapeFunction[#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3], #2]],
+        VertexShapeFunction -> Function[Tooltip[$StateVertexShapeFunction[][#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3], #2]],
         VertexSize -> If[type === "Hypergraph", 64, Automatic],
         PerformanceGoal -> "Quality"
     ];
