@@ -44,7 +44,7 @@ MultiwaySystemProp[HoldPattern[MultiwaySystem[multi_, _]], "Multi"] := multi
 MultiwaySystemProp[HoldPattern[MultiwaySystem[_, type_]], "Type"] := type
 
 
-StateShape[hg : {{_Integer, __}...}, size_ : Automatic, opts___] := ResourceFunction["WolframModelPlot"][hg, opts, ImageSize -> size, PlotRangePadding -> 0]
+StateShape[hg : {{_Integer | _Symbol, __}...}, size_ : Automatic, opts___] := ResourceFunction["WolframModelPlot"][hg, opts, ImageSize -> size, PlotRangePadding -> 0]
 StateShape[_Missing, ___] := ""
 StateShape[expr_, ___] := expr
 
@@ -69,6 +69,7 @@ Block[{g},
         VertexLabels -> Placed[Automatic, Tooltip],
         VertexShapeFunction -> (Tooltip[$StateVertexShapeFunction[][#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3], #2] &),
         VertexSize -> If[type === "Hypergraph", 64, Automatic],
+        EdgeStyle -> ResourceFunction["WolframPhysicsProjectStyleData"]["StatesGraph", "EdgeStyle"],
         GraphLayout -> "LayeredDigraphEmbedding",
         PerformanceGoal -> "Quality"
     ];
@@ -92,6 +93,7 @@ Block[{g},
         VertexLabels -> Placed[Automatic, Tooltip],
         VertexShapeFunction -> (Tooltip[$StateVertexShapeFunction[][#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3], #2] &),
         VertexSize -> If[type === "Hypergraph", 64, Automatic],
+        EdgeStyle -> ResourceFunction["WolframPhysicsProjectStyleData"]["StatesGraph", "EdgeStyle"],
         GraphLayout -> "LayeredDigraphEmbedding",
         PerformanceGoal -> "Quality"
     ];

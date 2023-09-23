@@ -125,7 +125,8 @@ EvolutionGraph[multi_Multi, steps_Integer : 1, lvl_Integer : 2, opts : OptionsPa
             ]
         ][[2]],
         FilterRules[{opts}, Options[Graph]],
-        VertexLabels -> Placed[Automatic, Tooltip]
+        VertexLabels -> Placed[Automatic, Tooltip],
+        EdgeStyle -> ResourceFunction["WolframPhysicsProjectStyleData"]["StatesGraph", "EdgeStyle"]
     ]
 ]
 
@@ -173,7 +174,8 @@ CausalGraph[g_, type : _String | None : None, opts : OptionsPattern[]] := Enclos
 		FilterRules[{opts}, Options[Graph]],
 		VertexLabels -> If[type === None, None, DirectedEdge[_, _, tag_] :> Placed[tag, Tooltip]],
 		GraphLayout -> "LayeredDigraphEmbedding",
-		ResourceFunction["WolframPhysicsProjectStyleData"]["CausalGraph"]["Options"]
+		EdgeStyle -> ResourceFunction["WolframPhysicsProjectStyleData"]["EvolutionCausalGraph"]["CausalEdgeStyle"],
+        VertexStyle -> ResourceFunction["WolframPhysicsProjectStyleData"]["EvolutionCausalGraph"]["EventVertexStyle"]
 	];
     gg = Switch[OptionValue["TransitiveReduction"],
         True,
@@ -234,8 +236,8 @@ CausalBranchialGraph[cg_Graph, n_Integer : 1, opts : OptionsPattern[]] := Block[
         EdgeAdd[cg, slideBranchEdges],
         opts,
         VertexCoordinates -> Thread[VertexList[cg] -> GraphEmbedding[cg]],
-        EdgeShapeFunction -> (#1 -> Function[{
-            ResourceFunction["WolframPhysicsProjectStyleData"]["BranchialGraph"]["EdgeStyle"], If[Equal @@ #1[[{1, -1}]], Nothing, {Thick, Dashed, Line[#1[[{1, -1}]]]}]}
+        EdgeStyle -> (#1 -> Directive[
+            ResourceFunction["WolframPhysicsProjectStyleData"]["BranchialGraph"]["EdgeStyle"], Thick, Dashed
         ] &) /@ slideBranchEdges
     ]
 ]
@@ -250,8 +252,8 @@ EvolutionBranchialGraph[g_Graph, opts : OptionsPattern[]] := Block[{
         EdgeAdd[g, branchEdges],
         opts,
         VertexCoordinates -> Thread[VertexList[g] -> GraphEmbedding[g]],
-        EdgeShapeFunction -> (#1 -> Function[{
-            ResourceFunction["WolframPhysicsProjectStyleData"]["BranchialGraph"]["EdgeStyle"], If[Equal @@ #1[[{1, -1}]], Nothing, {Thick, Dashed, Line[#1[[{1, -1}]]]}]}
+        EdgeStyle -> (#1 -> Directive[
+            ResourceFunction["WolframPhysicsProjectStyleData"]["BranchialGraph"]["EdgeStyle"], Thick, Dashed
         ] &) /@ branchEdges
     ]
 ]
@@ -297,7 +299,7 @@ CausalStatesGraph[cg_, opts : OptionsPattern[]] := Graph[
 				VertexList[cg, DirectedEdge[_, Interpretation[#2, _] | #2,___]],
 				EdgeStyle -> Directive[
 					Arrowheads[0.05],
-					ResourceFunction["WolframPhysicsProjectStyleData"]["CausalGraph"]["EdgeStyle"]
+					ResourceFunction["WolframPhysicsProjectStyleData"]["EvolutionCausalGraph", "CausalEdgeStyle"]
 				],
 				ImageSize -> #3
 			],
