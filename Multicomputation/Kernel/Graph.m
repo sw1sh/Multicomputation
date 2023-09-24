@@ -57,9 +57,9 @@ AddInitState[g_Graph, i_Integer : 0] := EdgeAdd[
     MapIndexed[
         If[ MatchQ[#1, {_, _Integer}],
             With[{l = #1[[1, 1, 1]]},
-                DirectedEdge[{{{l, Missing[i]}}, #1}, #1, {{}, "InitState", None, <|"Input" -> {l}, "Output" -> #1[[1, All, 1]], "Rule" -> 0, "Position" -> {}, "Step" -> i + 1|>}]
+                DirectedEdge[{{{l, Missing[i]}}, #1}, #1, {{}, "InitState", None, <|"Input" -> {l}, "Output" -> #1[[1, All, 1]], "Rule" -> 0, "Position" -> {{1}}, "Step" -> i + 1|>}]
             ],
-            DirectedEdge[{{i, Missing[i]}}, #1, {{}, "InitState", None, <|"Input" -> {i}, "Output" -> #1[[All, 1]], "Rule" -> 0, "Position" -> {}, "Step" -> i + 1|>}]
+            DirectedEdge[{{i, Missing[i]}}, #1, {{}, "InitState", None, <|"Input" -> {i}, "Output" -> #1[[All, 1]], "Rule" -> 0, "Position" -> {{1}}, "Step" -> i + 1|>}]
         ] &,
         Pick[VertexList[g], Thread[VertexInDegree[g] == 0]]
     ]
@@ -174,7 +174,7 @@ CausalGraph[g_, type : _String | None : None, opts : OptionsPattern[]] := Enclos
 		FilterRules[{opts}, Options[Graph]],
 		VertexLabels -> If[type === None, None, DirectedEdge[_, _, tag_] :> Placed[tag, Tooltip]],
 		GraphLayout -> "LayeredDigraphEmbedding",
-		EdgeStyle -> ResourceFunction["WolframPhysicsProjectStyleData"]["EvolutionCausalGraph"]["CausalEdgeStyle"],
+		EdgeStyle -> ResourceFunction["WolframPhysicsProjectStyleData"]["CausalGraph"]["EdgeStyle"],
         VertexStyle -> ResourceFunction["WolframPhysicsProjectStyleData"]["EvolutionCausalGraph"]["EventVertexStyle"]
 	];
     gg = Switch[OptionValue["TransitiveReduction"],
@@ -299,7 +299,7 @@ CausalStatesGraph[cg_, opts : OptionsPattern[]] := Graph[
 				VertexList[cg, DirectedEdge[_, Interpretation[#2, _] | #2,___]],
 				EdgeStyle -> Directive[
 					Arrowheads[0.05],
-					ResourceFunction["WolframPhysicsProjectStyleData"]["EvolutionCausalGraph", "CausalEdgeStyle"]
+					ResourceFunction["WolframPhysicsProjectStyleData"]["CausalGraph", "EdgeStyle"]
 				],
 				ImageSize -> #3
 			],

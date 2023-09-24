@@ -5,7 +5,7 @@ $WFR = {
     |>,
     <|
         "Name" -> "MultiEvaluate",
-        "FunctionLocation" -> "https://www.wolframcloud.com/obj/nikm/Resources/750/750c617b-fcac-40f3-9dc8-80cafbd5e8ac/download/DefinitionData"
+        "FunctionLocation" -> "https://www.wolframcloud.com/obj/nikm/Resources/db9/db9d6451-6da9-4f52-8464-4fb2f1d88184/download/DefinitionData"
     |>,
     <|
         "Name" -> "TokenEventGraph",
@@ -13,7 +13,7 @@ $WFR = {
     |>,
     <|
         "Name" -> "TraceCausalGraph",
-        "FunctionLocation" -> "https://www.wolframcloud.com/obj/nikm/Resources/575/575e1866-276b-4229-98f0-6a3f265b4b50/download/DefinitionData"
+        "FunctionLocation" -> "https://www.wolframcloud.com/obj/nikm/Resources/297/2979a6b7-6a0d-421e-a09c-70d779019894/download/DefinitionData"
     |>
 }
 
