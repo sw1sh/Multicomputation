@@ -52,7 +52,7 @@ MultiProp[multi_, "ValueCount"] := Times @@ Replace[Function[Null, Length @ Unev
 MultiProp[multi_, "MatchCount"] := Total[Function[Null, Length @ Unevaluated @ #, HoldFirst] /@ multi["Matches"]]
 
 
-MultiProp[multi_, "Options"] := Sequence @@ Join[multi["EvaluateOptions"], multi["ReplaceOptions"]]
+MultiProp[multi_, "Options"] := Sequence @@ Join[multi["EvaluateOptions"], multi["ReplaceOptions"], multi["ExtraOptions"]]
 
 MultiProp[multi_, "AllReplaceArguments"] := Sequence[multi["Rules"], multi["ReplaceArguments"], multi["Options"]]
 

@@ -363,7 +363,7 @@ ApplyHypergraphRules[x_, rules_, opts : OptionsPattern[]] := With[{
                 "Input" -> destroyed, "Output" -> created, "Rule" -> #1[[1]], "Position" -> #1[[2]]
             |> -> state
         ] &,
-        OptionValue["ProcessMatches"] @ MultiReplace[x, rules, {1}, FilterRules[{opts}, Options[MultiReplace]], "Mode" -> "Subsets"]
+        OptionValue["ProcessMatches"] @ MultiReplace[x, rules, {1}, FilterRules[{opts}, Options[MultiReplace]], "Mode" -> "OrderlessSubsets"]
     ]
 ]
 
@@ -382,7 +382,8 @@ HypergraphMulti[init_, rule_, opts : OptionsPattern[]] := Enclose @ Block[{
 			Function[Null, ToLinkedHypergraph[Unevaluated[#], type], HoldAll] /@ listInit,
 			RuleDelayed @@ Hold[\[FormalCapitalH]_, ApplyHypergraphRules[\[FormalCapitalH], multReplaceRules, applyOptions, "Hypergraph" -> hypergraphQ]],
 			{1},
-			FilterRules[{opts}, $MultiOptions]
+			FilterRules[{opts}, $MultiOptions],
+			"DeepMultiEvaluate" -> False
 		]
 	]
 ]
@@ -403,23 +404,27 @@ ApplyWolframModelRules[x_, rules_] := Module[{
     ]
 ]
 
-WolframModelMulti[init_, rules_, OptionsPattern[]] := With[{
+WolframModelMulti[init_, rules_, opts : OptionsPattern[]] := With[{
 	patternRules = Map[ToLinkedHypergraph /* LinkedHypergraphRuleToPatternRule, wrap[rules]]
 },
     Multi[
 		ToLinkedHypergraph /@ wrap[init],
 		RuleDelayed @@ Hold[\[FormalCapitalH]_, ApplyWolframModelRules[\[FormalCapitalH], patternRules]],
-		{1}
+		{1},
+		FilterRules[{opts}, $MultiOptions],
+		"DeepMultiEvaluate" -> False
 	]
 ]
 
-StringMulti[init_, rule_, OptionsPattern[]] := With[{
+StringMulti[init_, rule_, opts : OptionsPattern[]] := With[{
 	rules = wrap[rule]
 },
 	Multi[
 		ToLinkedHypergraph[#, "String"] & /@ wrap[init],
 		RuleDelayed @@ Hold[\[FormalCapitalH]_, ApplyStringRules[\[FormalCapitalH], rules]],
-		{1}
+		{1},
+		FilterRules[{opts}, $MultiOptions],
+		"DeepMultiEvaluate" -> False
 	]
 ]
 

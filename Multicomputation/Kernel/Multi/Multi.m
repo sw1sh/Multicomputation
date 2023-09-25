@@ -11,7 +11,7 @@ PackageScope["MultiDataQ"]
 
 
 
-$MultiKeys := {"Expression", "Values", "Matches", "Rules", "EvaluateOptions", "ReplaceArguments", "ReplaceOptions"}
+$MultiKeys := {"Expression", "Values", "Matches", "Rules", "EvaluateOptions", "ReplaceArguments", "ReplaceOptions", "ExtraOptions"}
 
 Multi[data_Association] /; ContainsOnly[Keys[data], $MultiKeys] && !ContainsExactly[Keys[data], $MultiKeys] :=
     Multi[<|
@@ -22,6 +22,7 @@ Multi[data_Association] /; ContainsOnly[Keys[data], $MultiKeys] && !ContainsExac
         "EvaluateOptions" -> {},
         "ReplaceArguments" -> Sequence[{{}}],
         "ReplaceOptions" -> {},
+        "ExtraOptions" -> {},
         KeyDrop[data, Complement[Keys[data, $MultiKeys]]]
     |>]
 
@@ -39,7 +40,8 @@ MultiDataQ[data_Association] := MatchQ[data, KeyValuePattern[{
         ],
     "Rules" -> {(_Rule | _RuleDelayed) ...},
     "EvaluateOptions" -> OptionsPattern[],
-    "ReplaceOptions" -> OptionsPattern[]
+    "ReplaceOptions" -> OptionsPattern[],
+    "ExtraOptions" -> OptionsPattern[]
     }]
 ]
 
@@ -55,10 +57,11 @@ mergeData[data__] := Append[Last[{data}][[{"Expression"}]]] @
 
 
 
-$MultiOptions := $MultiOptions = Join[Options[MultiEvaluate], Options[MultiReplace]]
+$MultiOptions := $MultiOptions = Join[{"DeepMultiEvaluate" -> True}, Options[MultiEvaluate], Options[MultiReplace]]
 
 $MultiOptionsPattern := $MultiOptionsPattern = Alternatives @@ ReplacePart[$MultiOptions, {_, 2} -> _]
 
+Options[Multi] = $MultiOptions
 
 Multi[multi_Multi] := multi
 
@@ -85,10 +88,14 @@ With[{
         Multi[<|"Expression" :> head[]|>],
 
         MatchQ[Unevaluated @ expr, _head],
-        MapAt[
-            HoldApply[Multi, Sequence @@ FilterRules[{opts}, Options[MultiEvaluate]]],
-            Unevaluated @ expr,
-            ElementPositions[Unevaluated @ expr, head]
+        If[
+            TrueQ[OptionValue[Multi, {opts}, "DeepMultiEvaluate"]],
+            MapAt[
+                HoldApply[Multi, Sequence @@ FilterRules[{opts}, Options[MultiEvaluate]]],
+                Unevaluated @ expr,
+                    ElementPositions[Unevaluated @ expr, head]
+            ],
+            Multi[<|"Expression" :> expr|>]
         ],
 
         True,
@@ -117,19 +124,20 @@ With[{
         "Matches" -> Join[multi["Matches"], Association @ KeyValueMap[{#1[[2]], "Rule", Drop[#1, {2}]} -> #2 &, matches]],
         "EvaluateOptions" -> FilterRules[{opts}, Options[MultiEvaluate]],
         "ReplaceArguments" -> Sequence[arg, head],
-        "ReplaceOptions" -> FilterRules[{opts}, Options[MultiReplace]]
+        "ReplaceOptions" -> FilterRules[{opts}, Options[MultiReplace]],
+        "ExtraOptions" -> FilterRules[{opts}, Except[Join[Options[MultiEvaluate], Options[MultiReplace]]]]
     |>]
     ]]
 ]
 
 
-Multi[expr_, rules : {},
+(* Multi[expr_, rules : {},
     arg : {} | {{}} | Except[OptionsPattern[]] : Automatic,
     head_Symbol : List,
     opts : OptionsPattern[Join[Options[MultiEvaluate], Options[MultiReplace]]]] :=
 With[{
     multi = If[
-        ListQ[Unevaluated @ expr],
+        TrueQ[OptionValue[{opts}, "DeepMultiEvaluate"]] && ListQ[Unevaluated @ expr],
         MapAt[HoldApply[Multi, Sequence @@ FilterRules[{opts}, Options[MultiEvaluate]]], Unevaluated @ expr, ElementPositions[Unevaluated @ expr, List]],
         Multi[Unevaluated @ expr, Sequence @@ FilterRules[{opts}, Options[MultiEvaluate]]]
     ]
@@ -141,7 +149,7 @@ With[{
         "ReplaceArguments" -> Sequence[arg, head],
         "ReplaceOptions" -> FilterRules[{opts}, Options[MultiReplace]]|>
     ]
-]
+] *)
 
 Multi /: (f : Except[Multi])[left___, HoldPattern[Multi[alts_List]], right___] := With[{
     i = Length @ Unevaluated @ {left} + 1
@@ -218,7 +226,8 @@ Multi[alts_List, opts : OptionsPattern[$MultiOptions]] := With[{ph = MultiPlaceh
         "Expression" :> ph,
         "Values" -> <|{} :> alts|>,
         "EvaluateOptions" -> FilterRules[{opts}, Options[MultiEvaluate]],
-        "ReplaceOptions" -> FilterRules[{opts}, Options[MultiReplace]]
+        "ReplaceOptions" -> FilterRules[{opts}, Options[MultiReplace]],
+        "ExtraOptions" -> FilterRules[{opts}, Except[Join[Options[MultiEvaluate], Options[MultiReplace]]]]
     |>]
 ]
 
@@ -235,7 +244,9 @@ Multi[subExpr : Except[_List | _Association], opts : OptionsPattern[$MultiOption
         Map[If[Length @ # > 2, Last @ #, None] &]
     ],
     "EvaluateOptions" -> FilterRules[{opts}, Options[MultiEvaluate]],
-    "ReplaceOptions" -> FilterRules[{opts}, Options[MultiReplace]]|>
+    "ReplaceOptions" -> FilterRules[{opts}, Options[MultiReplace]],
+    "ExtraOptions" -> FilterRules[{opts}, Except[Join[Options[MultiEvaluate], Options[MultiReplace]]]]
+|>
 ]
 
 
