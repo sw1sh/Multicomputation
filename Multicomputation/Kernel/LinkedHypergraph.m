@@ -324,7 +324,7 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
 	ReplaceAt[newRule /. Verbatim[Module][{}, body_] :> body, Splice[body_] :> body, {2}]
 ]
 
-Options[ApplyHypergraphRules] = Join[{"Hypergraph" -> True, "Evaluate" -> False, "Mode" -> "OrderlessSubsets", "ProcessMatches" -> Identity}, Options[MultiReplace]]
+Options[ApplyHypergraphRules] = Join[{"Hypergraph" -> True, "Evaluate" -> False, "Mode" -> "OrderlessSubsets", "ProcessMatches" -> Identity, "StateVisitFunction" -> (Null &), "EventSelectionFunction" -> (#2 &)}, Options[MultiReplace]]
 ApplyHypergraphRules[x_, rules_, opts : OptionsPattern[]] := With[{
 	rhsLengths = Replace[
 		rules,
@@ -339,7 +339,8 @@ ApplyHypergraphRules[x_, rules_, opts : OptionsPattern[]] := With[{
 		{1}
 	]
 },
-    Association @ KeyValueMap[
+	OptionValue["StateVisitFunction"][x, rules];
+    OptionValue["EventSelectionFunction"][x, #] & @ Association @ KeyValueMap[
         Block[{
             state = If[TrueQ[OptionValue["Evaluate"]], ToLinkedHypergraph @ FromLinkedHypergraph[#, "Expression"] &, Identity] @ First[#2],
             uniqueLinks, repl,
