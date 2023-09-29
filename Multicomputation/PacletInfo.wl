@@ -5,7 +5,7 @@ PacletObject[
     "Creator" -> "Wolfram Research",
     "License" -> "MIT",
     "PublisherID" -> "Wolfram",
-    "Version" -> "0.0.13",
+    "Version" -> "0.1.0",
     "WolframVersion" -> "13.1+",
     "Extensions" -> {
       {

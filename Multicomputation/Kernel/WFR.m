@@ -5,7 +5,7 @@ $WFR = {
     |>,
     <|
         "Name" -> "MultiEvaluate",
-        "FunctionLocation" -> "https://www.wolframcloud.com/obj/nikm/Resources/db9/db9d6451-6da9-4f52-8464-4fb2f1d88184/download/DefinitionData"
+        "FunctionLocation" -> "https://www.wolframcloud.com/obj/nikm/Resources/8e8/8e808eed-b666-4530-9ab2-0026a7977e98/download/DefinitionData"
     |>,
     <|
         "Name" -> "TokenEventGraph",
