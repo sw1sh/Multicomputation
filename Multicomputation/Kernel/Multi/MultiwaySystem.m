@@ -283,11 +283,10 @@ Block[{g},
         "IncludeInitialEvent" -> False,
         "IncludeInitialState" -> False,
          VertexLabels -> {
-            token_ :> Placed[FromLinkedHypergraph[{token}, type], Tooltip],
             DirectedEdge[_, _, tag_] :> Placed[tag, Tooltip]
         },
         VertexShapeFunction -> {
-            _DirectedEdge -> $EventVertexShapeFunction["Tokens", m["ExtraOptions"]],
+            _DirectedEdge -> $EventVertexShapeFunction[type, m["ExtraOptions"]],
             Except[_DirectedEdge] -> Function[$StateVertexShapeFunction["Tokens", m["ExtraOptions"]][#1, MapAt[Style[#, Bold] &, 2] @ #2, #3]]
         },
         VertexSize -> If[StringEndsQ[type, "Hypergraph"], 64, Automatic],
