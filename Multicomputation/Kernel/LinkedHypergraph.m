@@ -1,12 +1,14 @@
 Package["Wolfram`Multicomputation`"]
 
 PackageImport["Wolfram`MulticomputationInit`"]
+PackageImport["WolframInstitute`Hypergraph`"]
 
 PackageExport["LinkedHypergraphQ"]
 PackageExport["ToLinkedHypergraph"]
 PackageExport["FromLinkedHypergraph"]
 PackageExport["HypergraphMulti"]
 PackageExport["WolframModelMulti"]
+PackageExport["WIHypergraphMulti"]
 PackageExport["StringMulti"]
 PackageExport["CanonicalLinkedHypergraph"]
 PackageExport["IndexedTreeToLinkedHypergraph"]
@@ -22,13 +24,14 @@ PackageExport["MultiwayType"]
 PackageExport["LinkedHypergraphToRootTree"]
 
 
+link = _Integer | _Symbol | _Symbol[_Integer]
 
-LinkedHypergraphQ[{{_Integer | _Symbol, _, (_Integer | _Symbol)...}...}] := True
+LinkedHypergraphQ[{{link, _, link...}...}] := True
 LinkedHypergraphQ[___] := False
 
 
 Options[HypergraphToLinkedHypergraph] = {"Permute" -> True}
-HypergraphToLinkedHypergraph[hg_] := Module[{perm, iso},
+HypergraphToLinkedHypergraph[hg_, OptionsPattern[]] := Module[{perm, iso},
 	{perm, iso} = ResourceFunction["FindCanonicalHypergraphIsomorphism"][hg, "IncludePermutation" -> True];
 	Join[
 		MapThread[Join[{#2, None}, #1] &,
@@ -145,6 +148,8 @@ ConstructPatternToLinkedHypergraph[expr_, patt_ : None] := If[patt === None,
 
 
 MultiwayType[expr_] := Which[
+	HypergraphQ[expr],
+	"WIHypergraph",
 	GraphQ[expr],
 	"Graph",
 	TreeQ[expr],
@@ -156,6 +161,8 @@ MultiwayType[expr_] := Which[
 	ListQ[expr],
 	"List",
 
+	HypergraphRuleQ[expr],
+	"WIHypergraph",
 	MatchQ[expr, _String -> _String],
 	"String",
 	MatchQ[expr, {{__Integer | ___Symbol}...} -> {{__Integer | ___Symbol}...}],
@@ -217,6 +224,8 @@ ToLinkedHypergraph[expr_, autoType : _String | Automatic : Automatic] := With[{t
 			StringToLinkedHypergraph[Unevaluated[expr]],
 			"Hypergraph",
 			HypergraphToLinkedHypergraph[Unevaluated[expr]],
+			"WIHypergraph",
+			WIHypergraphToLinkedHypergraph[Unevaluated[expr]],
 			"List",
 			ListToLinkedHypergraph[Unevaluated[expr]],
 			"ConstructExpression",
@@ -248,6 +257,8 @@ FromLinkedHypergraph[hg : {{_, _, ___} ...}, type : _String | None : "Graph", op
 	LinkedHypergraphToString[hg, opts],
 	"Hypergraph",
 	LinkedHypergraphToHypergraph[hg, opts],
+	"WIHypergraph",
+	LinkedHypergraphWIHypergraph[hg, opts],
 	_,
 	LinkedHypergraphToGraph[hg, opts]
 ]
@@ -427,6 +438,55 @@ StringMulti[init_, rule_, opts : OptionsPattern[]] := With[{
 		FilterRules[{opts}, $MultiOptions],
 		"DeepMultiEvaluate" -> False
 	]
+]
+
+
+ApplyWIHypergraphRules[lh_ ? LinkedHypergraphQ, rules_, opts : OptionsPattern[]] := Block[{
+	h = Hypergraph[FromLinkedHypergraph[lh, "WIHypergraph"], opts], vertexIndex
+},
+	vertexIndex = PositionIndex[VertexList[h]];
+	Association @ Catenate @ MapIndexed[
+		{rule, i} |->
+			MapIndexed[With[{input = Join[#DeletedVertices, #MatchVertices]},
+				<|
+					"Input" -> input,
+					"Output" -> Join[#NewVertices, Union @@ Replace[#NewEdges, (edge_ -> _) :> edge, {1}]],
+					"Rule" -> i[[1]],
+					"Position" -> Join[Lookup[vertexIndex, input], #MatchEdgePositions + VertexCount[h]],
+					"Match" -> Iconize[#, "Match"]
+				|> -> ToLinkedHypergraph[#Hypergraph, "WIHypergraph"]
+			 ] &, rule[h, "Canonicalize" -> Full]],
+		wrap[rules]
+	]
+]
+
+WIHypergraphMulti[init_ ? HypergraphQ, rule_, opts : OptionsPattern[]] := With[{
+	rules = wrap[rule], hopts = FilterRules[Options[init], Except[VertexLabels | EdgeLabels]]
+},
+    Multi[
+		{ToLinkedHypergraph[init, "WIHypergraph"]},
+		RuleDelayed @@ Hold[\[FormalCapitalH]_, ApplyWIHypergraphRules[\[FormalCapitalH], rules, hopts]],
+		{1},
+		FilterRules[{opts}, $MultiOptions],
+		"DeepMultiEvaluate" -> False,
+		"ExtraOptions" -> hopts
+	]
+]
+
+WIHypergraphToLinkedHypergraph[hg_ ? HypergraphQ] := Block[{vertices, edges},
+	vertices = Reap[
+		edges = MapIndexed[
+			Replace[#1, Labeled[vs_, {_, edgeLabel_}] :>
+				{\[FormalE][#2[[1]]], edgeLabel, Splice @ Replace[vs, Labeled[v_, Labeled[l_, _]] :> (Sow[{v, l}]; v), {1}]}] &,
+			ToLabeledEdges[hg]
+		]
+	][[2]];
+	Join[Union @@ vertices, edges]
+]
+
+LinkedHypergraphWIHypergraph[hg_, OptionsPattern[]] := Block[{vertices, edges},
+	{vertices, edges} = GatherBy[hg, Length[#] == 2 && IntegerQ[#[[1]]] &];
+	Hypergraph[vertices[[All, 1]], edges[[All, 3 ;;]], VertexLabels -> Rule @@@ vertices, EdgeLabels -> Thread[edges[[All, 3 ;;]] -> edges[[All, 2]]]]
 ]
 
 

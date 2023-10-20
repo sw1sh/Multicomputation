@@ -57,7 +57,7 @@ mergeData[data__] := Append[Last[{data}][[{"Expression"}]]] @
 
 
 
-$MultiOptions := $MultiOptions = Join[{"DeepMultiEvaluate" -> True}, Options[MultiEvaluate], Options[MultiReplace]]
+$MultiOptions := $MultiOptions = Join[{"DeepMultiEvaluate" -> True, "ExtraOptions" -> {}}, Options[MultiEvaluate], Options[MultiReplace]]
 
 $MultiOptionsPattern := $MultiOptionsPattern = Alternatives @@ ReplacePart[$MultiOptions, {_, 2} -> _]
 
@@ -78,7 +78,7 @@ Multi[
     rules : {Except[$MultiOptionsPattern, _Rule | _RuleDelayed] ...},
     arg : {} | {{}} | Except[OptionsPattern[$MultiOptions]] : Automatic,
     head_Symbol : List,
-    opts : OptionsPattern[$MultiOptions]] :=
+    opts : OptionsPattern[]] :=
 With[{
     multi = Which[
         MatchQ[Hold[expr], Hold[_Multi]],
@@ -125,7 +125,7 @@ With[{
         "EvaluateOptions" -> FilterRules[{opts}, Options[MultiEvaluate]],
         "ReplaceArguments" -> Sequence[arg, head],
         "ReplaceOptions" -> FilterRules[{opts}, Options[MultiReplace]],
-        "ExtraOptions" -> FilterRules[{opts}, Except[Join[Options[MultiEvaluate], Options[MultiReplace]]]]
+        "ExtraOptions" -> FilterRules[{opts, OptionValue[Multi, {opts}, "ExtraOptions"]}, Except[Join[Options[MultiEvaluate], Options[MultiReplace]] | "ExtraOptions"]]
     |>]
     ]]
 ]
