@@ -47,7 +47,7 @@ MultiwaySystemProp[HoldPattern[MultiwaySystem[multi_, _]], "Multi"] := multi
 MultiwaySystemProp[HoldPattern[MultiwaySystem[_, type_]], "Type"] := type
 
 
-StateShape[hg : {{_Integer | _Symbol, __}...}, size_ : Automatic, opts___] := ResourceFunction["WolframModelPlot"][hg, opts, ImageSize -> size, PlotRangePadding -> 0]
+StateShape[hg : {{_Integer | _Symbol, __}...}, size_ : Automatic, opts___] := ResourceFunction["WolframModelPlot"][hg, FilterRules[{opts}, Options[ResourceFunction["WolframModelPlot"]]], ImageSize -> size, PlotRangePadding -> 0]
 StateShape[hg_ ? HypergraphQ, size_, opts___] := SimpleHypergraphPlot[hg, opts, ImageSize -> size]
 StateShape[_Missing, ___] := ""
 StateShape[expr_, ___] := expr
@@ -66,9 +66,9 @@ $StateVertexShapeFunction[type_, opts___] := Function[Inset[
 MultiwaySystemProp[m_, "Graph" | "EvolutionGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] := With[{type = m["Type"]},
 Block[{g},
     g = m["Multi"]["Graph", n,
-        opts,
+        FilterRules[{opts}, Options[Graph]],
         VertexLabels -> Placed[Automatic, Tooltip],
-        VertexShapeFunction -> (Tooltip[$StateVertexShapeFunction[type][#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3], #2] &),
+        VertexShapeFunction -> (Tooltip[$StateVertexShapeFunction[type, m["ExtraOptions"]][#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3], #2] &),
         VertexSize -> If[StringEndsQ[type, "Hypergraph"], 64, Automatic],
         EdgeStyle -> ResourceFunction["WolframPhysicsProjectStyleData"]["StatesGraph", "EdgeStyle"],
         GraphLayout -> "LayeredDigraphEmbedding",
@@ -92,7 +92,7 @@ Block[{g},
         ],
         FilterRules[{opts}, Options[Graph]],
         VertexLabels -> Placed[Automatic, Tooltip],
-        VertexShapeFunction -> (Tooltip[$StateVertexShapeFunction[type][#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3], #2] &),
+        VertexShapeFunction -> (Tooltip[$StateVertexShapeFunction[type, m["ExtraOptions"]][#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3], #2] &),
         VertexSize -> If[StringEndsQ[type, "Hypergraph"], 64, Automatic],
         EdgeStyle -> ResourceFunction["WolframPhysicsProjectStyleData"]["StatesGraph", "EdgeStyle"],
         GraphLayout -> "LayeredDigraphEmbedding",
@@ -403,6 +403,7 @@ With[{type = m["Type"]},
             _DirectedEdge -> $EventVertexShapeFunction[type, m["ExtraOptions"]],
             Except[_DirectedEdge] -> Function[$StateVertexShapeFunction[type, m["ExtraOptions"]][#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3]]
         },
+        EdgeShapeFunction -> DirectedEdge[Except[_DirectedEdge], _DirectedEdge] -> "Line",
         VertexSize -> If[StringEndsQ[type, "Hypergraph"], 64, Automatic],
         GraphLayout -> "LayeredDigraphEmbedding",
         PerformanceGoal -> "Quality"
@@ -446,8 +447,14 @@ Block[{g},
     g = Graph[
         If[ prop === "BranchialGraph",
             UndirectedEdge @@@ ReleaseHold[m["Multi"]["Foliations", n - 1][[1, -1, 1]]]["BranchPairs"],
-            Catenate[UndirectedEdge @@@ ReleaseHold[#]["BranchPairs"] & /@ m["Multi"]["Foliations", n - 1][[1, All, 1]]]
+            Block[{foliations = m["Multi"]["Foliations", n - 1][[1, All, 1]]},
+                Sequence @@ {
+                    Catenate[ReleaseHold[#]["Expression"] & /@ foliations],
+                    Catenate[UndirectedEdge @@@ ReleaseHold[#]["BranchPairs"] & /@ foliations]
+                }
+            ]
         ],
+        FilterRules[{opts}, Options[Graph]],
         EdgeStyle -> ResourceFunction["WolframPhysicsProjectStyleData"]["BranchialGraph"]["EdgeStyle"],
         VertexShapeFunction -> Function[Tooltip[$StateVertexShapeFunction[type, m["ExtraOptions"]][#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3], #2]],
         VertexSize -> If[StringEndsQ[type, "Hypergraph"], 64, Automatic],

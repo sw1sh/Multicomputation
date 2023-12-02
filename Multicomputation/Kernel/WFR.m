@@ -21,9 +21,11 @@ makeSymbolName[uuid_String, name_String] := "FunctionRepository`$" <> StringDele
 
 $WFR = Append[#, {"ResourceType" -> "Function", "SymbolName" -> makeSymbolName[Import[#["FunctionLocation"]]["UUID"], #["Name"]]}] & /@ $WFR
 
+cachedResourceFunction[arg_] := cachedResourceFunction[arg] = ResourceFunction[arg]
+
 Scan[data |->
     With[{sym = Symbol[$Context <> data["Name"]],
-        wfr = If[MissingQ[data["FunctionLocation"]], ResourceFunction[data["Name"]], ResourceFunction[ResourceObject[data]]]
+        wfr = If[MissingQ[data["FunctionLocation"]], cachedResourceFunction[data["Name"]], cachedResourceFunction[ResourceObject[data]]]
     },
         sym;
         sym[args___] := wfr[args];

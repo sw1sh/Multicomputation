@@ -410,7 +410,8 @@ ApplyWolframModelRules[x_, rules_] := Module[{
         With[{state = Join[Delete[x, List /@ #[[2, 1]]], edges[[#[[2, 2]]]]]},
             <|
                 "Input" -> edges[[#[[2, 1]]]][[All, 1]],
-                "Output" -> edges[[#[[2, 2]]]][[All, 1]]
+                "Output" -> edges[[#[[2, 2]]]][[All, 1]],
+				"Position" -> List /@ #[[2, 1]]
             |> -> state
         ] & /@ eo["AllEventsList"]
     ]

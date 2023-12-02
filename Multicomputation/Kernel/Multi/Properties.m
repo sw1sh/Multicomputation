@@ -54,7 +54,7 @@ MultiProp[multi_, "MatchCount"] := Total[Function[Null, Length @ Unevaluated @ #
 
 MultiProp[multi_, "Options"] := Sequence @@ Join[multi["EvaluateOptions"], multi["ReplaceOptions"], multi["ExtraOptions"]]
 
-MultiProp[multi_, "AllReplaceArguments"] := Sequence[multi["Rules"], multi["ReplaceArguments"], multi["Options"]]
+MultiProp[multi_, "AllReplaceArguments"] := Sequence[multi["Rules"], multi["ReplaceArguments"], FilterRules[{multi["Options"]}, Options[Multi]], "ExtraOptions" -> FilterRules[{multi["Options"]}, Except[Options[Multi]]]]
 
 MultiProp[multi_, "ReplaceHead"] := Enclose[ConfirmBy[{multi["ReplaceArguments"]}, MatchQ[{_, _Symbol, ___}]][[2]], List &]
 
