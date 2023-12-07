@@ -13,7 +13,6 @@ PacletObject[
         "Root" -> "Kernel",
         "Context" -> {
           "Wolfram`MulticomputationLoader`",
-          "Wolfram`MulticomputationInit`",
           {
             "Wolfram`Multicomputation`",
             "MulticomputationMain.m"

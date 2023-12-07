@@ -1,8 +1,8 @@
-Package["Wolfram`MulticomputationLoader`"]
+BeginPackage["Wolfram`MulticomputationInit`"]
 
-PackageImport["DocumentationSearch`"]
+Quiet @ Get[FileNameJoin[{DirectoryName[$InputFileName], "WFR.m"}]]
 
-
+EndPackage[]
 
 PacletManager`Package`loadWolframLanguageCode[
     "Wolfram`Multicomputation",
@@ -16,9 +16,3 @@ PacletManager`Package`loadWolframLanguageCode[
     },
     "HiddenImports" -> {}
 ];
-
-
-$PacletPath = ExpandFileName[FileNameJoin[{DirectoryName[$InputFileName], ".."}]]
-
-Quiet[CreateDocumentationIndex[FileNameJoin[{$PacletPath, "Documentation", "English"}]]]
-
