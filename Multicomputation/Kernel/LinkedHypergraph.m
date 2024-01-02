@@ -456,7 +456,7 @@ ApplyWIHypergraphRules[lh_ ? LinkedHypergraphQ, rules_, opts : OptionsPattern[]]
 					"Position" -> Join[Lookup[vertexIndex, input], #MatchEdgePositions + VertexCount[h]],
 					"Match" -> Iconize[#, "Match"]
 				|> -> ToLinkedHypergraph[#Hypergraph, "WIHypergraph"]
-			 ] &, rule[h, "Canonicalize" -> Full]],
+			 ] &, rule[h]],
 		wrap[rules]
 	]
 ]
@@ -486,7 +486,7 @@ WIHypergraphToLinkedHypergraph[hg_ ? HypergraphQ] := Block[{vertices, edges},
 ]
 
 LinkedHypergraphWIHypergraph[hg_, OptionsPattern[]] := Block[{vertices, edges},
-	{vertices, edges} = Lookup[GroupBy[hg, MatchQ[#[[1]], \[FormalE][_]] &], {False, True}];
+	{vertices, edges} = Lookup[GroupBy[hg, MatchQ[#[[1]], \[FormalE][_]] || MatchQ[#[[2]], None] &], {False, True}, {}];
 	Hypergraph[vertices[[All, 1]], edges[[All, 3 ;;]], VertexLabels -> Rule @@@ vertices, EdgeLabels -> Thread[edges[[All, 3 ;;]] -> edges[[All, 2]]]]
 ]
 

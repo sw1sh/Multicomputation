@@ -170,7 +170,7 @@ Options[WIHypergraphEventShape] = Options[Hypergraph]
 WIHypergraphEventShape[DirectedEdge[from_, to_, tag_], size_, opts : OptionsPattern[]] := Framed[
     If[ KeyExistsQ[tag, "Match"],
         First @ HighlightRule[
-            {First @ tag["Match"]},
+            {Replace[tag["Match"], IconizedObject[e_, ___] :> e]},
             Hypergraph[FromLinkedHypergraph[from, "WIHypergraph"], opts],
             ImageSize -> size / 2
         ],
@@ -256,7 +256,7 @@ Block[{g},
         FilterRules[{opts}, Options[CausalGraph]],
         "IncludeInitialEvent" -> False,
         VertexLabels -> DirectedEdge[_, _, tag_] :> Placed[tag, Tooltip],
-        VertexShapeFunction -> $EventVertexShapeFunction[type, m["ExtraOptions"]],
+        VertexShapeFunction -> Function[$EventVertexShapeFunction[type, m["ExtraOptions"]][#1, #2, #3]],
         VertexSize -> If[StringEndsQ[type, "Hypergraph"], 64, Automatic],
         GraphLayout -> "LayeredDigraphEmbedding",
         PerformanceGoal -> "Quality"
@@ -312,6 +312,7 @@ Options[canonicalizeStates] = Join[{"CanonicalStateFunction" -> None}, Options[G
 canonicalizeStates[g_, type_, opts : OptionsPattern[]] := With[{
     stateCanonicalFunction = Replace[OptionValue["CanonicalStateFunction"], {
         Automatic -> Function[FromLinkedHypergraph[#, type]],
+        "Canonical" | "CanonicalHypergraph" /; type === "WIHypergraph" :> ToLinkedHypergraph @* CanonicalHypergraph @* (FromLinkedHypergraph[ReplacePart[#, {_, 2} -> Automatic], type] &),
         "Canonical" | "CanonicalHypergraph" -> CanonicalLinkedHypergraph,
         Full -> Function[FromLinkedHypergraph[CanonicalLinkedHypergraph[#], type]]
     }]
@@ -362,7 +363,7 @@ canonicalizeEvents[g_, type_, opts : OptionsPattern[]] := With[{
     }]
 },
     If[ eventCanonicalFunction === None,
-        g,
+        Graph[g, FilterRules[{opts}, Options[Graph]]],
         Block[{oldEvents = VertexList[g, _DirectedEdge], newEvents},
             newEvents = Replace[oldEvents, event : DirectedEdge[from_, to_, ___] :>
                 Replace[eventCanonicalFunction[event], newTag : Except[_DirectedEdge] :> DirectedEdge[from , to, newTag]],
@@ -489,16 +490,13 @@ MultiwaySystemProp[m_, args___] := m["Multi"][args]
 m_MultiwaySystem[args___] /; MultiwaySystemQ[m] := MultiwaySystemProp[m, args]
 
 
-MakeBoxes[mobj_MultiwaySystem, form_] := With[{
-    icon = ResourceFunction["WolframModelPlot"][{{9, 5}, {6, 5}, {8, 5}, {1, 2}, {1, 5}, {4, 8, 4}, {1, 3, 8}, {9, 8, 10}, {4, 7, 3}, {4, 9, 10}}]
-},
+MakeBoxes[mobj_MultiwaySystem, form_] := 
     BoxForm`ArrangeSummaryBox[
         "MultiwaySystem",
         mobj,
-        icon,
-        {{mobj["Type"]}},
-        {{mobj["HoldExpression"]}},
+        None,
+        {BoxForm`SummaryItem[{"Type: ", mobj["Type"]}]},
+        {BoxForm`SummaryItem[{mobj["HoldExpression"]}]},
         form
     ]
-]
 
