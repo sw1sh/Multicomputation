@@ -208,7 +208,7 @@ MultiProp[multi_, "MultiList"] := With[{
                 With[{newData = <|
                     multi["Data"],
                     "Values" -> KeyMap[Drop[#, UpTo[1]] &] @ KeySelect[multi["Values"], Take[#, UpTo[1]] == k &],
-                    "Matches" -> KeyMap[MapAt[Drop[#, UpTo[1]] &, {1, All}]] @ KeySelect[multi["Matches"], MemberQ[First[#], k] &]
+                    "Matches" -> KeyMap[MapAt[Drop[#, UpTo[1]] &, {1, All}]] @ KeySelect[multi["Matches"], MemberQ[#[[1, All, ;; 1]], k] &]
                     |>
                 },
                     With[{data = <|newData, "Expression" :> v|>},

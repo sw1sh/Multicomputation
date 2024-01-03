@@ -7,7 +7,7 @@ Multi /: MakeBoxes[multi : HoldPattern[Multi[data_ /; AssociationQ[Unevaluated @
         BoxForm`ArrangeSummaryBox[
             "Multi",
             Defer @ multi,
-            CompleteKaryTree[4],
+            None,
             {
                 {
                     BoxForm`SummaryItem[{
