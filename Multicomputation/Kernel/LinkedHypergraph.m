@@ -10,6 +10,7 @@ PackageExport["HypergraphMulti"]
 PackageExport["WolframModelMulti"]
 PackageExport["WIHypergraphMulti"]
 PackageExport["StringMulti"]
+PackageExport["CAMulti"]
 PackageExport["CanonicalLinkedHypergraph"]
 PackageExport["IndexedTreeToLinkedHypergraph"]
 PackageExport["LinkedHypergraphRoot"]
@@ -17,6 +18,7 @@ PackageExport["UniquifyIndexedTree"]
 PackageExport["LinkedHypergraphToIndexedTree"]
 PackageExport["LinkedHypergraphRuleToPatternRule"]
 PackageExport["PatternRuleToMultiReplaceRule"]
+PackageExport["ApplyCARules"]
 PackageExport["ApplyHypergraphRules"]
 PackageExport["ApplyWolframModelRules"]
 PackageExport["MultiwayType"]
@@ -165,6 +167,8 @@ MultiwayType[expr_] := Which[
 	"WIHypergraph",
 	MatchQ[expr, _String -> _String],
 	"String",
+	MatchQ[expr, _CellularAutomaton],
+	"CA",
 	MatchQ[expr, {{__Integer | ___Symbol}...} -> {{__Integer | ___Symbol}...}],
 	"Hypergraph",
 	MatchQ[expr, _List -> _List],
@@ -222,6 +226,8 @@ ToLinkedHypergraph[expr_, autoType : _String | Automatic : Automatic] := With[{t
 			TreeToLinkedHypergraph[Unevaluated[expr]],
 			"String",
 			StringToLinkedHypergraph[Unevaluated[expr]],
+			"CA",
+			CAToLinkedHypergraph[Unevaluated[expr]],
 			"Hypergraph",
 			HypergraphToLinkedHypergraph[Unevaluated[expr]],
 			"WIHypergraph",
@@ -255,6 +261,8 @@ FromLinkedHypergraph[hg : {{_, _, ___} ...}, type : _String | None : "Graph", op
 	LinkedHypergraphToList[hg, opts],
 	"String",
 	LinkedHypergraphToString[hg, opts],
+	"CA",
+	LinkedHypergraphToCA[hg, opts],
 	"Hypergraph",
 	LinkedHypergraphToHypergraph[hg, opts],
 	"WIHypergraph",
@@ -490,5 +498,76 @@ LinkedHypergraphWIHypergraph[hg_, OptionsPattern[]] := Block[{vertices, edges},
 	Hypergraph[vertices[[All, 1]], edges[[All, 3 ;;]], VertexLabels -> Rule @@@ vertices, EdgeLabels -> Thread[edges[[All, 3 ;;]] -> edges[[All, 2]]]]
 ]
 
+
+
+(* CA *)
+
+RulePlot;
+$SowRuleEnumerator = True;
+PrependTo[
+	DownValues[NKSSpecialFunctions`RulePlot`Dump`RPRuleMaker1], 
+  	HoldPattern[NKSSpecialFunctions`RulePlot`Dump`RPRuleMaker1[args : PatternSequence[{___, k_, r_}, _, {___, enumerator_}, rn_, ___]] /; $SowRuleEnumerator] :>
+   		Block[{$SowRuleEnumerator = False},
+    		Sow[enumerator[rn, k, r]];
+    		NKSSpecialFunctions`RulePlot`Dump`RPRuleMaker1[args]
+    	]
+]
+
+CARuleRange[rule_CellularAutomaton] := Replace[Reap[RulePlot[rule]][[2, 1, 1, 1, 1]], {_, _, cell_, _} | cell_ :> (Dimensions[cell] - 1) / 2]
+
+ArrayTokens[rules_, range_ ? VectorQ] :=
+	Append[Last[rules]] @* Sort /@ WeaklyConnectedComponents @ RelationGraph[
+		AllTrue[Abs[#1[[1]] - #2[[1]]] - 2 range, # <= 0 &] &,
+		Most[rules]
+	]
+
+ArrayTokens[array_ ? SparseArrayQ, range_ ? VectorQ] := ArrayTokens[ArrayRules[array], range]
+
+CAToLinkedHypergraph[array_ ? SparseArrayQ, defRange_ : Automatic] := MapIndexed[Append[#2, #1] &, ArrayTokens[array, Replace[defRange, Automatic :> ConstantArray[1, ArrayDepth[array]]]]]
+
+LinkedHypergraphToCA[hg_, OptionsPattern[]] := Enclose @ With[{rules = ConfirmMatch[Catenate[hg[[All, 2, ;; -2]]], {__Rule}]}, {bounds = Confirm[CoordinateBounds[rules[[All, 1]]]][[All, 1]]},
+	SparseArray[Join[MapAt[# - bounds + 1 &, rules, {All, 1}], hg[[All, 2, -1]]]]
+]
+
+ApplyCARules[hg_, rules_] := Enclose @ Block[{input = Confirm @ FromLinkedHypergraph[hg, "CA"], bounds = Confirm[CoordinateBounds[Catenate @ hg[[All, 2, ;; -2, 1]]]][[All, 1]], events},
+	Association @ MapIndexed[{rule, i} |->
+		With[
+			{range = CARuleRange[rule], output = SparseArray[rule[{input, 0}][[1]]]},
+			{newHg = Confirm @ MapAt[# - range + bounds - 1 &, CAToLinkedHypergraph[output, range], {All, 2, ;; -2, 1}]},
+			
+			{diff = SymmetricDifference[Catenate[hg[[All, 2]]], Catenate[newHg[[All, 2]]]]},
+			events = If[diff === {}, {}, ArrayTokens[SparseArray[diff], range][[All, ;; -2, 1]]];
+			events =
+			DeleteDuplicatesBy[#[[1, {"Input", "Output"}]] &] @
+			Map[
+				event |-> With[{rhs = Select[newHg, IntersectingQ[#[[2, ;; -2, 1]], event] &]},
+					<|
+						"Input" -> Select[hg, AnyTrue[#[[2, ;; -2, 1]], AnyTrue[Abs[event - Threaded[#]] - Threaded[range], Max[#] <= 0 &] &] &][[All, 1]],
+						"Output" -> Select[newHg, AnyTrue[#[[2, ;; -2, 1]], AnyTrue[Abs[event - Threaded[#]] - Threaded[range], Max[#] <= 0 &] &] &][[All, 1]]
+					|> -> rhs
+						(* Sort @ Join[Select[hg, ! IntersectingQ[#[[2, ;; -2, 1]], event] &], rhs] *)
+				],
+			 	events
+			];
+			<|
+				"Input" -> hg[[All, 1]],
+				"Output" -> newHg[[All, 1]],
+				"Rule" -> i[[1]],
+				"SubEvents" -> events
+			|> -> newHg
+		],
+		wrap[rules]
+	]
+]
+
+CAMulti[init_, rule_, opts : OptionsPattern[]] := With[{rules = wrap[rule]}, {range = MapThread[Max, CARuleRange /@ rules]},
+	Multi[
+		CAToLinkedHypergraph[#, range] & /@ wrap[init],
+		RuleDelayed @@ Hold[\[FormalCapitalH]_, ApplyCARules[\[FormalCapitalH], rules]],
+		{1},
+		FilterRules[{opts}, $MultiOptions],
+		"DeepMultiEvaluate" -> False
+	]
+]
 
 

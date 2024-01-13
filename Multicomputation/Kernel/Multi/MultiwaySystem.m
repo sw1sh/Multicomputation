@@ -23,9 +23,9 @@ m : MultiwaySystem[rules_, init_, OptionsPattern[]] /; ! MultiwaySystemQ[Unevalu
     method, methodOpts
 },
     {method, methodOpts} = Replace[OptionValue[Method], {
-        Automatic -> {Switch[type, "Hypergraph", WolframModelMulti, "String", StringMulti, "WIHypergraph", WIHypergraphMulti, _, HypergraphMulti], {}},
-        "Hypergraph" | {"Hypergraph", opts : OptionsPattern[]} -> {WolframModelMulti, {opts}},
-        "String" | {"String", opts : OptionsPattern[]} -> {StringMulti, {opts}},
+        Automatic -> {Switch[type, "Hypergraph", WolframModelMulti, "String", StringMulti, "CA", CAMulti, "WIHypergraph", WIHypergraphMulti, _, HypergraphMulti], {}},
+        "Hypergraph" | {"Hypergraph", opts : OptionsPattern[]} :> {WolframModelMulti, {opts}},
+        "String" | {"String", opts : OptionsPattern[]} :> {StringMulti, {opts}},
         {_, opts : OptionsPattern[]} | _ :> {HypergraphMulti, {opts}}
     }];
     MultiwaySystem[
@@ -54,7 +54,11 @@ StateShape[expr_, ___] := expr
 
 $StateVertexShapeFunction[type_, opts___] := Function[Inset[
     Framed[
-        Style[StateShape[#2, #3, opts], If[MatchQ[type, "String" | "Tokens"], {FontFamily -> "Arial",  FontWeight -> Plain}, {}], OptionValue[MultiEvaluate, "StateStyleOptions"]],
+        Style[
+            Switch[type, "CA" | ("CA" -> "Tokens"), ArrayPlot[If[MatchQ[type, _Rule], FromLinkedHypergraph[{#2}, "CA"], #2], ImageSize -> 64 #3], _, StateShape[MapAt[Style[#, Bold] &, #2, 2], #3, opts]],
+            If[MatchQ[type, "String" | (_ -> "Tokens")], {FontFamily -> "Arial",  FontWeight -> Plain}, {}],
+            OptionValue[MultiEvaluate, "StateStyleOptions"]
+        ],
         OptionValue[MultiEvaluate, "StateFrameOptions"]
     ],
     #1,
@@ -186,6 +190,7 @@ DefaultEventShape[DirectedEdge[from_, to_, tag_], size_, ___] := Framed[
             rhsPos = FirstPosition[to, {#, ___}, {1}, Heads -> False] & /@ tag["Output"],
             lhs, rhs, lhsRootPos, rhsRootPos
         },
+            If[MissingQ[lhsPos], Return["", Block]];
             lhs = Extract[from, lhsPos];
             rhs = Extract[to, rhsPos];
             lhsRootPos = FirstPosition[from, LinkedHypergraphRoot[lhs], {1}, Heads -> False];
@@ -217,6 +222,7 @@ TokenEventShape[DirectedEdge[from_, to_, tag_], size_, ___] := Framed[
             rhsPos = FirstPosition[to, {#, ___}, {1}, Heads -> False] & /@ tag["Output"],
             lhs, rhs
         },
+            If[MissingQ[lhsPos], Return["", Block]];
             lhs = Extract[from, lhsPos];
             rhs = Extract[to, rhsPos];
             Column[{
@@ -287,7 +293,7 @@ Block[{g},
         },
         VertexShapeFunction -> {
             _DirectedEdge -> $EventVertexShapeFunction[type, m["ExtraOptions"]],
-            Except[_DirectedEdge] -> Function[$StateVertexShapeFunction["Tokens", m["ExtraOptions"]][#1, MapAt[Style[#, Bold] &, 2] @ #2, #3]]
+            Except[_DirectedEdge] -> Function[Tooltip[$StateVertexShapeFunction[type -> "Tokens", m["ExtraOptions"]][#1, #2, #3], #2]]
         },
         VertexSize -> If[StringEndsQ[type, "Hypergraph"], 64, Automatic],
         GraphLayout -> "LayeredDigraphEmbedding",

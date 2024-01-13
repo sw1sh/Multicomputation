@@ -258,27 +258,49 @@ EvolutionBranchialGraph[g_Graph, opts : OptionsPattern[]] := Block[{
     ]
 ]
 
-Options[MultiTokenEventGraph] = Join[{"IncludeInitialState" -> True, "IncludeInitialEvent" -> True, "CausalEdges" -> False}, Options[Graph]]
+Options[MultiTokenEventGraph] = Join[{"IncludeInitialState" -> True, "IncludeInitialEvent" -> True, "CausalEdges" -> False, "Events" -> True}, Options[Graph]]
 MultiTokenEventGraph[cg_Graph, type : _String | None : None, opts : OptionsPattern[]] := Block[{
     edges = Flatten @ Replace[
         VertexList[cg],
-		    event : DirectedEdge[from_, to_, tag_] :> Join[
-			    Cases[from, token : {Alternatives @@ tag["Input"], ___} :> DirectedEdge[token, event]],
-			    Cases[to, token : {Alternatives @@ tag["Output"], ___} :> DirectedEdge[event, token]]
+        event : DirectedEdge[from_, to_, tag_] :> If[TrueQ[OptionValue["Events"]],
+            If[ KeyExistsQ[tag, "SubEvents"],
+                Catenate[
+                    Join[
+                        Cases[from, token : {Alternatives @@ #["Input"], ___} :> DirectedEdge[token, DirectedEdge[from, to, Join[KeyDrop[tag, "SubEvents"], #]]]],
+                        Cases[to, token : {Alternatives @@ #["Output"], ___} :> DirectedEdge[DirectedEdge[from, to, Join[KeyDrop[tag, "SubEvents"], #]], token]]
+                    ] & /@ tag["SubEvents"][[All, 1]]
+                ],
+                Join[
+                    Cases[from, token : {Alternatives @@ tag["Input"], ___} :> DirectedEdge[token, event]],
+                    Cases[to, token : {Alternatives @@ tag["Output"], ___} :> DirectedEdge[event, token]]
+                ]
             ],
+            If[ KeyExistsQ[tag, "SubEvents"],
+                Catenate[
+                    DirectedEdge @@@ Tuples[{Cases[from, {Alternatives @@ #["Input"], ___}], Cases[to, {Alternatives @@ #["Output"], ___}]}] & /@ tag["SubEvents"][[All, 1]]
+                ],
+                DirectedEdge @@@ Tuples[{Cases[from, {Alternatives @@ tag["Input"], ___}], Cases[to, {Alternatives @@ tag["Output"], ___}]}]
+            ]
+        ],
         {1}
     ],
     tokens
 },
-    tokens = DeleteDuplicates @ Cases[Vertex, {DirectedEdge[token_, _DirectedEdge] :> token, DirectedEdge[_DirectedEdge, token_] :> token}];
-    If[!TrueQ[OptionValue["IncludeInitialState"]],
+    tokens = DeleteDuplicates @ Cases[edges, {DirectedEdge[token_, _DirectedEdge] :> token, DirectedEdge[_DirectedEdge, token_] :> token}];
+    If[ ! TrueQ[OptionValue["IncludeInitialState"]],
         tokens = DeleteCases[tokens, {_, _Missing}];
         edges = DeleteCases[edges, DirectedEdge[{_, _Missing}, __] | DirectedEdge[_, {_, _Missing}, ___]]
     ];
     Graph[
-        If[TrueQ[OptionValue["CausalEdges"]], Identity, EdgeDelete[#, DirectedEdge[_DirectedEdge, _DirectedEdge, ___]] &] @
-        If[TrueQ[OptionValue["IncludeInitialEvent"]], Identity, VertexDelete[#, DirectedEdge[{{_, _Missing}}, __]] &] @
-            EdgeAdd[cg, edges, VertexLabels -> None],
+        If[ TrueQ[OptionValue["Events"]],
+            EdgeAdd[
+                If[TrueQ[OptionValue["CausalEdges"]], Identity, EdgeDelete[#, DirectedEdge[_DirectedEdge, _DirectedEdge, ___]] &] @
+                    If[TrueQ[OptionValue["IncludeInitialEvent"]], Identity, VertexDelete[#, DirectedEdge[{{_, _Missing}}, __]] &] @
+                        VertexDelete[cg, DirectedEdge[_, _, tag_] /; KeyExistsQ[tag, "SubEvents"]],
+                edges
+            ],
+            edges
+        ],
         FilterRules[{opts}, Options[Graph]],
         EdgeStyle -> (# -> ResourceFunction["WolframPhysicsProjectStyleData"]["StatesGraph"]["EdgeStyle"] & /@ edges),
         VertexLabels -> If[type === None, None, # -> Automatic & /@ tokens],

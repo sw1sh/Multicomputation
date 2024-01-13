@@ -19,7 +19,7 @@ $WFR = {
 
 makeSymbolName[uuid_String, name_String] := "FunctionRepository`$" <> StringDelete[uuid, "-"] <> "`" <> name;
 
-$WFR = Append[#, {"ResourceType" -> "Function", "SymbolName" -> makeSymbolName[Import[#["FunctionLocation"]]["UUID"], #["Name"]]}] & /@ $WFR
+$WFR = Append[#, {"ResourceType" -> "Function", "SymbolName" -> makeSymbolName[Once[Import[#["FunctionLocation"]]]["UUID"], #["Name"]]}] & /@ $WFR
 
 cachedResourceFunction[arg_] := cachedResourceFunction[arg] = ResourceFunction[arg]
 
