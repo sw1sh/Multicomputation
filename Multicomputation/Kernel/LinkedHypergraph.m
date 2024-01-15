@@ -536,7 +536,7 @@ ApplyCARules[hg_, rules_] := Enclose @ Block[{input = Confirm @ FromLinkedHyperg
 			{newHg = Confirm @ MapAt[# - range + bounds - 1 &, CAToLinkedHypergraph[output, range], {All, 2, ;; -2, 1}]},
 			
 			{diff = SymmetricDifference[Catenate[hg[[All, 2]]], Catenate[newHg[[All, 2]]]]},
-			events = If[diff === {}, {}, ArrayTokens[SparseArray[diff], range][[All, ;; -2, 1]]];
+			events = If[diff === {}, {}, ArrayTokens[diff, range][[All, ;; -2, 1]]];
 			events =
 			DeleteDuplicatesBy[#[[1, {"Input", "Output"}]] &] @
 			Map[
