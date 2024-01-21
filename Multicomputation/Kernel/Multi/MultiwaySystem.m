@@ -55,7 +55,7 @@ StateShape[expr_, ___] := expr
 $StateVertexShapeFunction[type_, opts___] := Function[Inset[
     Framed[
         Style[
-            Switch[type, "CA" | ("CA" -> "Tokens"), ArrayPlot[If[MatchQ[type, _Rule], FromLinkedHypergraph[{#2}, "CA"], #2], ImageSize -> 64 #3], _, StateShape[MapAt[Style[#, Bold] &, #2, 2], #3, opts]],
+            Switch[type, "CA" | ("CA" -> "Tokens"), ArrayPlot[If[MatchQ[type, _Rule], FromLinkedHypergraph[{#2}, "CA"], #2], ImageSize -> 64 #3], "Tokens", StateShape[MapAt[Style[#, Bold] &, #2, 2], #3, opts], _, StateShape[#2, #3, opts]],
             If[MatchQ[type, "String" | (_ -> "Tokens")], {FontFamily -> "Arial",  FontWeight -> Plain}, {}],
             OptionValue[MultiEvaluate, "StateStyleOptions"]
         ],
@@ -72,7 +72,7 @@ Block[{g},
     g = m["Multi"]["Graph", n,
         FilterRules[{opts}, Options[Graph]],
         VertexLabels -> Placed[Automatic, Tooltip],
-        VertexShapeFunction -> (Tooltip[$StateVertexShapeFunction[type, m["ExtraOptions"]][#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3], #2] &),
+        VertexShapeFunction -> With[{extra = m["ExtraOptions"]}, Tooltip[$StateVertexShapeFunction[type, extra][#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3], #2] &],
         VertexSize -> If[StringEndsQ[type, "Hypergraph"], 64, Automatic],
         EdgeStyle -> ResourceFunction["WolframPhysicsProjectStyleData"]["StatesGraph", "EdgeStyle"],
         GraphLayout -> "LayeredDigraphEmbedding",
@@ -96,7 +96,7 @@ Block[{g},
         ],
         FilterRules[{opts}, Options[Graph]],
         VertexLabels -> Placed[Automatic, Tooltip],
-        VertexShapeFunction -> (Tooltip[$StateVertexShapeFunction[type, m["ExtraOptions"]][#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3], #2] &),
+        VertexShapeFunction -> With[{extra = m["ExtraOptions"]}, Tooltip[$StateVertexShapeFunction[type, extra][#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3], #2] &],
         VertexSize -> If[StringEndsQ[type, "Hypergraph"], 64, Automatic],
         EdgeStyle -> ResourceFunction["WolframPhysicsProjectStyleData"]["StatesGraph", "EdgeStyle"],
         GraphLayout -> "LayeredDigraphEmbedding",
