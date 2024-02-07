@@ -477,7 +477,8 @@ WIHypergraphMulti[init_ ? HypergraphQ, rule_, opts : OptionsPattern[]] := With[{
 		RuleDelayed @@ Hold[\[FormalCapitalH]_, ApplyWIHypergraphRules[\[FormalCapitalH], rules, hopts]],
 		{1},
 		FilterRules[{opts}, $MultiOptions],
-		"DeepMultiEvaluate" -> False
+		"DeepMultiEvaluate" -> False,
+		"ExtraOptions" -> FilterRules[{hopts}, Options[Hypergraph]]
 	]
 ]
 
