@@ -23,10 +23,10 @@ m : MultiwaySystem[rules_, init_, OptionsPattern[]] /; ! MultiwaySystemQ[Unevalu
     method, methodOpts
 },
     {method, methodOpts} = Replace[OptionValue[Method], {
-        Automatic -> {Switch[type, "Hypergraph", WolframModelMulti, "String", StringMulti, "CA", CAMulti, "WIHypergraph", WIHypergraphMulti, _, HypergraphMulti], {}},
+        Automatic :> {Switch[type, "Hypergraph", WolframModelMulti, "String", StringMulti, "CA", CAMulti, "WIHypergraph", WIHypergraphMulti, _, HypergraphMulti], {}},
         "Hypergraph" | {"Hypergraph", opts : OptionsPattern[]} :> {WolframModelMulti, {opts}},
         "String" | {"String", opts : OptionsPattern[]} :> {StringMulti, {opts}},
-        {_, opts : OptionsPattern[]} | _ :> {HypergraphMulti, {opts}}
+        {type_, opts : OptionsPattern[]} :> {Switch[type, "Hypergraph", HypergraphMulti, "WolframModel", WolframModelMulti, "String", StringMulti, "CA", CAMulti, "WIHypergraph", WIHypergraphMulti, _, HypergraphMulti], {opts}}
     }];
     MultiwaySystem[
         Evaluate[method[Unevaluated[init], rules, methodOpts]],
@@ -48,7 +48,7 @@ MultiwaySystemProp[HoldPattern[MultiwaySystem[_, type_]], "Type"] := type
 
 
 StateShape[hg : {{_Integer | _Symbol, __}...}, size_ : Automatic, opts___] := ResourceFunction["WolframModelPlot"][hg, FilterRules[{opts}, Options[ResourceFunction["WolframModelPlot"]]], ImageSize -> size, PlotRangePadding -> 0]
-StateShape[hg_ ? HypergraphQ, size_, opts___] := SimpleHypergraphPlot[hg, opts, ImageSize -> size]
+StateShape[hg_ ? HypergraphQ, size_, opts___] := SimpleHypergraphPlot[hg, FilterRules[{opts}, Options[SimpleHypergraphPlot]], ImageSize -> size]
 StateShape[_Missing, ___] := ""
 StateShape[expr_, ___] := expr
 
@@ -175,10 +175,10 @@ WIHypergraphEventShape[DirectedEdge[from_, to_, tag_], size_, opts : OptionsPatt
     If[ KeyExistsQ[tag, "Match"],
         First @ HighlightRule[
             {Replace[tag["Match"], IconizedObject[e_, ___] :> e]},
-            Hypergraph[FromLinkedHypergraph[from, "WIHypergraph"], opts],
+            Hypergraph[FromLinkedHypergraph[from, "WIHypergraph"], FilterRules[{opts}, Options[Hypergraph]]],
             ImageSize -> size / 2
         ],
-        SimpleHypergraphPlot[FromLinkedHypergraph[to, "WIHypergraph"], opts, ImageSize -> size]
+        SimpleHypergraphPlot[FromLinkedHypergraph[to, "WIHypergraph"], FilterRules[{opts}, Options[SimpleHypergraphPlot]], ImageSize -> size]
     ],
     OptionValue[MultiEvaluate, "EventFrameOptions"]
 ]

@@ -451,7 +451,7 @@ StringMulti[init_, rule_, opts : OptionsPattern[]] := With[{
 
 
 ApplyWIHypergraphRules[lh_ ? LinkedHypergraphQ, rules_, opts : OptionsPattern[]] := Block[{
-	h = Hypergraph[FromLinkedHypergraph[lh, "WIHypergraph"], opts], vertexIndex
+	h = Hypergraph[FromLinkedHypergraph[lh, "WIHypergraph"], FilterRules[{opts}, Options[Hypergraph]]], vertexIndex
 },
 	vertexIndex = PositionIndex[VertexList[h]];
 	Association @ Catenate @ MapIndexed[
@@ -464,21 +464,20 @@ ApplyWIHypergraphRules[lh_ ? LinkedHypergraphQ, rules_, opts : OptionsPattern[]]
 					"Position" -> Join[Lookup[vertexIndex, input], #MatchEdgePositions + VertexCount[h]],
 					"Match" -> Iconize[#, "Match"]
 				|> -> ToLinkedHypergraph[#Hypergraph, "WIHypergraph"]
-			 ] &, rule[h]],
+			 ] &, rule[h, FilterRules[{opts}, Options[WolframInstitute`Hypergraph`HypergraphRules`PackagePrivate`HypergraphRuleApply]]]],
 		wrap[rules]
 	]
 ]
 
 WIHypergraphMulti[init_ ? HypergraphQ, rule_, opts : OptionsPattern[]] := With[{
-	rules = wrap[rule], hopts = FilterRules[Options[init], Except[VertexLabels | EdgeLabels]]
+	rules = wrap[rule], hopts = Join[Options[init], {opts}]
 },
     Multi[
 		{ToLinkedHypergraph[init, "WIHypergraph"]},
 		RuleDelayed @@ Hold[\[FormalCapitalH]_, ApplyWIHypergraphRules[\[FormalCapitalH], rules, hopts]],
 		{1},
 		FilterRules[{opts}, $MultiOptions],
-		"DeepMultiEvaluate" -> False,
-		"ExtraOptions" -> hopts
+		"DeepMultiEvaluate" -> False
 	]
 ]
 
