@@ -55,11 +55,15 @@ TreeNodes[tree_] := Prepend[TreeData[tree]] @ Catenate[TreeNodes /@ Replace[Tree
 AddInitState[g_Graph, i_Integer : 0] := EdgeAdd[
     g,
     MapIndexed[
-        If[ MatchQ[#1, {_, _Integer}],
+        Which[
+            MatchQ[#1, {_ ? LinkedHypergraphQ, _Integer}],
             With[{l = #1[[1, 1, 1]]},
-                DirectedEdge[{{{l, Missing[i]}}, #1}, #1, {{}, "InitState", None, <|"Input" -> {l}, "Output" -> #1[[1, All, 1]], "Rule" -> 0, "Position" -> {{1}}, "Step" -> i + 1|>}]
+                DirectedEdge[{{{l, Missing[i]}}, #1}, #1, <|"Input" -> {l}, "Output" -> #1[[1, All, 1]], "Rule" -> 0, "Position" -> {{1}}, "MatchPositions" -> {{}}, "MatchType" -> "Init", "Step" -> i + 1|>]
             ],
-            DirectedEdge[{{i, Missing[i]}}, #1, {{}, "InitState", None, <|"Input" -> {i}, "Output" -> #1[[All, 1]], "Rule" -> 0, "Position" -> {{1}}, "Step" -> i + 1|>}]
+            MatchQ[#1, _ ? LinkedHypergraphQ],
+            DirectedEdge[{{i, Missing[i]}}, #1, <|"Input" -> {i}, "Output" -> #1[[All, 1]], "Rule" -> 0, "Position" -> {{1}}, "MatchPositions" -> {{}}, "MatchType" -> "Init", "Step" -> i + 1|>],
+            True,
+            DirectedEdge[{{i, Missing[i]}}, #1, <|"Rule" -> 0, "Position" -> {{1}}, "MatchPositions" -> {{}}, "MatchType" -> "Init", "Step" -> i + 1|>]
         ] &,
         Pick[VertexList[g], Thread[VertexInDegree[g] == 0]]
     ]
@@ -99,7 +103,7 @@ EvolutionGraph[multi_Multi, steps_Integer : 1, lvl_Integer : 2, opts : OptionsPa
                     With[{
                         edges = (
                             i++;
-                            Sow[Map[MapAt[Append[<|"Step" -> i|>], #, If[Length[#[[3]]] > 3, {3, 4}, {3}]] &] @
+                            Sow[Map[ReplacePart[#, {3} -> Append[If[Length[#[[3]]] > 3, #[[3, 4]], <||>], <|"MatchPositions" -> #[[3, 1]], "MatchType" -> #[[3, 2]], "Step" -> i|>]] &] @
                                 DeleteCases[DirectedEdge[_, _, _Missing]] @ ReleaseHold[#][If[holdQ, "HoldEdges", "Edges"], lvl]
                             ]
                         )
@@ -138,7 +142,7 @@ CausalGraph[g_, type : _String | None : None, opts : OptionsPattern[]] := Enclos
         Count[VertexInDegree[gg], 0] > 1,
         gg = AddInitState[gg, i--]
     ];
-    gg = Graph[DirectedEdge[{#[[1]], #[[3, -1, "Step"]] - 1}, {#[[2]], #[[3, -1, "Step"]]}, #[[3]]] & /@ EdgeList[gg]];
+    gg = Graph[DirectedEdge[{#[[1]], #[[3, "Step"]] - 1}, {#[[2]], #[[3, "Step"]]}, #[[3]]] & /@ EdgeList[gg]];
     gg = AddInitState[gg, i];
     lg = IndexGraph @ lineGraph @ gg;
     nodes = If[
@@ -147,7 +151,7 @@ CausalGraph[g_, type : _String | None : None, opts : OptionsPattern[]] := Enclos
 	    SortBy[First] @ TreeLevel[TreeMap[List, ConfirmBy[DirectedGraphTree[lg], TreeQ], All -> {"Data", "Position"}], All -> "Data"]
     ];
 	positions = Last /@ nodes;
-    events = MapAt[Last, MapAt[First, EdgeList[gg], {{All, 1}, {All, 2}}], {All, 3}];
+    events = MapAt[First, EdgeList[gg], {{All, 1}, {All, 2}}];
 	events = Map[MapAt[Append[{"TreePosition" -> #[[2]], "Index" -> #[[1]]}], events[[#[[1]]]], {3}] &, nodes];
     If[ AllTrue[events, KeyExistsQ[#[[3]], "Input"] && KeyExistsQ[#[[3]], "Output"] &],
         If[ TrueQ[OptionValue["CanonicalizeStates"]],
@@ -157,13 +161,22 @@ CausalGraph[g_, type : _String | None : None, opts : OptionsPattern[]] := Enclos
         ];
         If[!TrueQ[OptionValue["IncludeInitialEvent"]], events = DeleteCases[events, DirectedEdge[{{_, _Missing}}, __]]];
         mat = Outer[
-            Boole[#1["Step"] < #2["Step"] && MatchQ[#2["TreePosition"], Append[#1["TreePosition"], __]] && IntersectingQ[#1["Output"], #2["Input"]]] &,
+            Boole[
+                #1["Step"] < #2["Step"] &&
+                MatchQ[#2["TreePosition"], Append[#1["TreePosition"], __]] &&
+                IntersectingQ[#1["Output"], #2["Input"]]
+            ] &,
             events[[All, 3]],
             events[[All, 3]]
         ],
         If[!TrueQ[OptionValue["IncludeInitialEvent"]], events = DeleteCases[events, DirectedEdge[{{_, _Missing}}, __]]];
         mat = Outer[
-            Boole[#1["Step"] < #2["Step"] && MatchQ[#2["TreePosition"], Append[#1["TreePosition"], __]]] &,
+            Boole[
+                #1["Step"] < #2["Step"] &&
+                MatchQ[#2["TreePosition"], Append[#1["TreePosition"], __]] &&
+                (AnyTrue[#2["MatchPositions"], MatchQ[Alternatives @@ Append[___] /@ #1["MatchPositions"]]] ||
+                AnyTrue[#1["MatchPositions"], MatchQ[Alternatives @@ Append[___] /@ #2["MatchPositions"]]])
+            ] &,
             events[[All, 3]],
             events[[All, 3]]
         ]

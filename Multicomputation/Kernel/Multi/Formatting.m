@@ -12,7 +12,7 @@ Multi /: MakeBoxes[multi : HoldPattern[Multi[data_ /; AssociationQ[Unevaluated @
                 {
                     BoxForm`SummaryItem[{
                         ReplaceAll[
-                            HoldForm[DisableFormatting @ expr],
+                            Replace[HoldForm[DisableFormatting @ expr], HoldForm[x_] :> x, {2, Infinity}],
                             sym_Symbol /; StringStartsQ[SymbolName[Unevaluated @ sym], "$MultiPlaceholder"] :> System`\[Placeholder]
                         ]
                     }]

@@ -42,7 +42,7 @@ MultiProp[multi_, "HoldExpression"] := Extract[multi["Data"], "Expression", Hold
 MultiProp[multi_, "Keys"] := Join[List /@ Keys @ multi["Values"], Keys @ multi["Matches"]]
 
 MultiProp[multi_, "Positions"] := Replace[{{pos : {{_Integer ...} ...}, __} :> pos, pos : {{_Integer ...} ...} :> pos}] /@
-    Join[Keys @ multi["Values"], Keys @ multi["Matches"]]
+    Join[List /@ Keys @ multi["Values"], Keys @ multi["Matches"]]
 
 
 MultiProp[multi_, "Size"] := Length @ multi["Keys"]
@@ -62,15 +62,15 @@ MultiProp[multi_, "ReplaceHead"] := Enclose[ConfirmBy[{multi["ReplaceArguments"]
 MultiProp[multi_, "ListValues"] := With[{expr = Unevaluated @@ multi["HoldExpression"]},
     KeyValueMap[
         Which[
-            MatchQ[#1, {{_Integer ...}, "Eval"}],
-            Extract[expr, {First @ #1}],
-            MatchQ[#1, {_Integer ...}],
+            MatchQ[#1, {{{_Integer ...}}, "Eval"}],
+            Extract[expr, First @ #1],
+            MatchQ[#1, {{_Integer ...}}],
             #2,
             MatchQ[#1, {_, "Rule", _}],
             ReleaseHold @ #2,
             True,
             Function[x, ReplaceList[Unevaluated @ x, #2], HoldAllComplete] @@
-            First @ Extract[expr, {First @ #1}, HoldComplete]
+            First @ Extract[expr, First @ #1, HoldComplete]
         ] &,
         Join[multi["Values"], multi["Matches"]]
     ]
@@ -81,15 +81,15 @@ MultiProp[multi_, "HoldListValues"] := With[{expr = Unevaluated @@ multi["HoldEx
         Function[
             Null,
             Which[
-                MatchQ[#1, {{_Integer ...}, "Eval"}],
-                Extract[expr, {First @ #1}],
-                MatchQ[#1, {_Integer ...}],
+                MatchQ[#1, {{{_Integer ...}}, "Eval"}],
+                Extract[expr, First @ #1],
+                MatchQ[#1, {{_Integer ...}}],
                 HoldForm /@ Unevaluated @ #2,
                 MatchQ[#1, {_, "Rule", _}],
                 #2,
                 True,
                 Function[x, ReplaceList[HoldForm @ x, MapAt[HoldForm, Unevaluated[#2], {All, All}]], HoldAllComplete] @@
-                First @ Extract[expr, {First @ #1}, HoldComplete]
+                First @ Extract[expr, First @ #1, HoldComplete]
             ],
             HoldAll
         ],
@@ -105,8 +105,8 @@ MultiProp[multi_, "MatchBindings"] := If[MatchQ[#, {_, "Rule", _}], #[[3, 2]], {
 
 MultiProp[multi_, "Bindings"] := Join[Table[<||>, #] & /@ Values[Length /@ multi["Values"]], multi["MatchBindings"]]
 
-MultiProp[multi_, "EvaluateList"] := With[{expr = Unevaluated @@ (multi["HoldExpression"] /. Join @@ Catenate @ multi["Bindings"])},
-    Map[ReplacePart[expr, Thread[Replace[{} -> {{}}] /@ multi["Positions"] -> #]] &, multi["Tuples"]]
+MultiProp[multi_, "EvaluateList"] := With[{expr = Unevaluated @@ (multi["HoldExpression"] /. Join @@ Catenate @ multi["Bindings"]), pos = multi["Positions"]},
+    Map[ReplacePart[expr, Thread[pos -> #]] &, multi["Tuples"]]
 ]
 
 MultiProp[multi_, "EvaluateListOnce"] := With[{pos = multi["Positions"]},
@@ -119,7 +119,7 @@ MultiProp[multi_, "EvaluateListOnce"] := With[{pos = multi["Positions"]},
                 },
                     ReplacePart[expr, pos -> #] & /@ Developer`ToList[subExprs]
                 ],
-                {Replace[{} -> {{}}] /@ multi["Positions"], #1, #2}
+                {multi["Positions"], #1, #2}
             ] &,
             With[{
                 values = multi["ListValues"]
@@ -134,21 +134,19 @@ MultiProp[multi_, "EvaluateListOnce"] := With[{pos = multi["Positions"]},
 ]
 
 MultiProp[multi_, "HoldEvaluateList"] := With[{
-    expr = multi["HoldExpression"] /. Join @@ Catenate @ multi["Bindings"]
+    expr = multi["HoldExpression"] /. Join @@ Catenate @ multi["Bindings"],
+    pos = Map[Prepend[1], multi["Positions"], {2}]
 },
     Map[
         ReplacePart[
             expr,
-            MapThread[
-                With[{values = Unevaluated @@ Delete[HoldForm[#2], Prepend[1] @* Append[0] /@ Position[#2, _HoldForm]]}, #1 :> values] &,
-                {Map[Prepend[1], multi["Positions"]], #}
-            ]
+            Thread[pos -> #]
         ] &,
         multi["HoldTuples"]
     ]
 ]
 
-MultiProp[multi_, "HoldEvaluateListOnce"] := With[{pos = Map[Prepend[1], multi["Positions"]]},
+MultiProp[multi_, "HoldEvaluateListOnce"] := With[{pos = Map[Prepend[1], multi["Positions"], {2}]},
     If[
         Length[pos] > 0,
         MapThread[
@@ -294,7 +292,7 @@ If[
 ]
 
 MultiProp[multi_, "HoldMultiListEvaluate"] := Function[Null, Multi[Unevaluated[{##}], multi["AllReplaceArguments"]], HoldAllComplete] @@
-    Flatten[HoldForm @@ Catenate @ Catenate @ multi["HoldListEvaluate"]]
+    Flatten[HoldForm @@ Flatten[multi["HoldListEvaluate"], 3]]
 
 MultiProp[multi_, "HoldMultiListEvaluate", n_Integer] := If[
     n > 0,
@@ -306,13 +304,17 @@ MultiProp[multi_, "MultiListEvaluate"] := Multi[Flatten[(multi["ListEvaluate"] /
 
 MultiProp[multi_, "MultiListEvaluate", n_Integer] := If[n > 0, multi["MultiListEvaluate"]["MultiListEvaluate", n - 1], multi]
 
-MultiProp[multi_, "HoldMultiEvaluate"] := HoldApply[Multi, multi["AllReplaceArguments"]] @@@ Catenate @ multi["HoldEvaluateListOnce"]
+MultiProp[multi_, "HoldMultiEvaluate"] := HoldApply[Multi, multi["AllReplaceArguments"]] @@@ Flatten[multi["HoldEvaluateListOnce"], 2]
 
 MultiProp[multi_, "HoldMultiEvaluate", n_Integer] := If[n > 0, multi["HoldMultiEvaluate"]["HoldMultiEvaluate", n - 1], multi]
 
 MultiProp[multi_, "MultiEvaluate"] := Map[Multi[#, multi["AllReplaceArguments"]] &, Flatten[multi["EvaluateListOnce"] /. a_Association :> Splice @ Values[a], 2]]
 
 MultiProp[multi_, "MultiEvaluate", n_Integer] := If[n > 0, multi["MultiEvaluate"]["MultiEvaluate", n - 1], multi]
+
+MultiProp[multi_, "MultiEvaluateList", args___] := multi["MultiEvaluate", args]["Expression"]
+
+MultiProp[multi_, "HoldMultiEvaluateList", args___] := multi["HoldMultiEvaluate", args]["HoldExpression"]
 
 MultiProp[multi_, "Events", lvl_Integer : 1] := MapThread[{keys, tos} |->
     Catenate @ Map[to |->

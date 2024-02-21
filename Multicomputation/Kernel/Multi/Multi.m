@@ -238,7 +238,7 @@ Multi[subExpr : Except[_List | _Association], opts : OptionsPattern[$MultiOption
     "Expression" :> subExpr,
     "Matches" -> GroupBy[
         With[{filterOpts = FilterRules[{opts}, Options[MultiEvaluate]]},
-            MultiEvaluate[subExpr, "Keys", filterOpts]
+            MapAt[List, {All, 1}] @ MultiEvaluate[subExpr, "Keys", filterOpts]
         ],
         Take[#, 2] &,
         Map[If[Length @ # > 2, Last @ #, None] &]

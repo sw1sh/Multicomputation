@@ -4,8 +4,9 @@ $WFR = {
         "FunctionLocation" -> "https://www.wolframcloud.com/obj/nikm/Resources/e95/e95e886d-0871-40ac-9167-a03825e05f6b/download/DefinitionData"
     |>,
     <|
+        (* https://www.wolframcloud.com/obj/nikm/DeployedResources/Function/MultiEvaluate/ *)
         "Name" -> "MultiEvaluate",
-        "FunctionLocation" -> "https://www.wolframcloud.com/obj/nikm/Resources/8e8/8e808eed-b666-4530-9ab2-0026a7977e98/download/DefinitionData"
+        "FunctionLocation" -> "https://www.wolframcloud.com/obj/nikm/Resources/987/9878b1f6-11d4-4770-825a-5d5c71b9a656/download/DefinitionData"
     |>,
     <|
         "Name" -> "TokenEventGraph",
