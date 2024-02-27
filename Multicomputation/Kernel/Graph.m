@@ -40,13 +40,15 @@ ToDirectedAcyclicGraph[g_Graph, Shortest[defaultRoot_ : Automatic], opts : Optio
 
 VertexCompleteGraph[vs_List] := With[{n = Length[vs]}, AdjacencyGraph[vs, SparseArray[{i_, i_} -> 0, {n, n}, 1]]]
 
-BranchialGraph[tree_Tree, opts___] := Graph[
+Options[BranchialGraph] = Options[Graph]
+
+BranchialGraph[tree_Tree, opts : OptionsPattern[]] := Graph[
     VertexAdd[GraphUnion @@ Map[VertexCompleteGraph, DeleteCases[None] @ Reap[TreeScan[Sow, tree, All -> "OriginalChildrenData"]][[2, 1]]], {TreeData[tree]}],
     opts,
     ResourceFunction["WolframPhysicsProjectStyleData"]["BranchialGraph"]["Options"]
 ]
 
-BranchialGraph[g_Graph, type : _String | None : None, opts___] :=
+BranchialGraph[g_Graph, type : _String | None : None, opts : OptionsPattern[]] :=
     BranchialGraph[DirectedGraphTree[g], opts, VertexLabels -> If[type === None, None, v_ :> Tooltip[FromLinkedHypergraph[v, type],  v]]]
 
 
@@ -63,7 +65,7 @@ AddInitState[g_Graph, i_Integer : 0] := EdgeAdd[
             MatchQ[#1, _ ? LinkedHypergraphQ],
             DirectedEdge[{{i, Missing[i]}}, #1, <|"Input" -> {i}, "Output" -> #1[[All, 1]], "Rule" -> 0, "Position" -> {{1}}, "MatchPositions" -> {{}}, "MatchType" -> "Init", "Step" -> i + 1|>],
             True,
-            DirectedEdge[{{i, Missing[i]}}, #1, <|"Rule" -> 0, "Position" -> {{1}}, "MatchPositions" -> {{}}, "MatchType" -> "Init", "Step" -> i + 1|>]
+            DirectedEdge[{Missing[i]}, #1, <|"Rule" -> 0, "Position" -> {{1}}, "MatchPositions" -> {{}}, "MatchType" -> "Init", "Step" -> i + 1|>]
         ] &,
         Pick[VertexList[g], Thread[VertexInDegree[g] == 0]]
     ]
@@ -96,14 +98,23 @@ SetAttributes[EvolutionGraph, HoldFirst]
 
 EvolutionGraph[multi_Multi, steps_Integer : 1, lvl_Integer : 2, opts : OptionsPattern[]] := Block[{i = 0, holdQ = TrueQ[OptionValue["Hold"]]},
     Graph[
-        Developer`ToList[multi["Expression"]],
+        If[ holdQ,
+            If[MatchQ[#, HoldForm[_List]], First @ Map[HoldForm, #, {2}], {#}] & @ multi["HoldExpression"],
+            Developer`ToList[multi["Expression"]]
+        ],
         DeleteCases[Except[_DirectedEdge]] @ Flatten @ Reap[
             Nest[
                 Function[
                     With[{
                         edges = (
                             i++;
-                            Sow[Map[ReplacePart[#, {3} -> Append[If[Length[#[[3]]] > 3, #[[3, 4]], <||>], <|"MatchPositions" -> #[[3, 1]], "MatchType" -> #[[3, 2]], "Step" -> i|>]] &] @
+                            Sow[Map[
+                                ReplacePart[#, {3} ->
+                                    Append[
+                                        If[Length[#[[3]]] > 3, #[[3, 4]], <||>],
+                                        <|If[MatchQ[#[[3]], {{___Integer} ...}], {"MatchPositions" -> #[[3]], "MatchType" -> "Value"}, {"MatchPositions" -> #[[3, 1]], "MatchType" ->  #[[3, 2]]}], "Step" -> i|>
+                                    ]
+                                ] &] @
                                 DeleteCases[DirectedEdge[_, _, _Missing]] @ ReleaseHold[#][If[holdQ, "HoldEdges", "Edges"], lvl]
                             ]
                         )
@@ -255,6 +266,7 @@ CausalBranchialGraph[cg_Graph, n_Integer : 1, opts : OptionsPattern[]] := Block[
     ]
 ]
 
+Options[EvolutionBranchialGraph] = Options[Graph]
 EvolutionBranchialGraph[g_Graph, opts : OptionsPattern[]] := Block[{
     branchEdges = SubsetCases[EdgeList[g], {
         DirectedEdge[_, a_, KeyValuePattern[{"Input" -> x_, "TreePosition" -> {p___, _}}]],
@@ -307,7 +319,7 @@ MultiTokenEventGraph[cg_Graph, type : _String | None : None, opts : OptionsPatte
     Graph[
         If[ TrueQ[OptionValue["Events"]],
             EdgeAdd[
-                If[TrueQ[OptionValue["CausalEdges"]], Identity, EdgeDelete[#, DirectedEdge[_DirectedEdge, _DirectedEdge, ___]] &] @
+                If[TrueQ[OptionValue["CausalEdges"]], Identity, If[EdgeCount[#] > 0, EdgeDelete[#, DirectedEdge[_DirectedEdge, _DirectedEdge, ___]], #] &] @
                     If[TrueQ[OptionValue["IncludeInitialEvent"]], Identity, VertexDelete[#, DirectedEdge[{{_, _Missing}}, __]] &] @
                         VertexDelete[cg, DirectedEdge[_, _, tag_] /; KeyExistsQ[tag, "SubEvents"]],
                 edges

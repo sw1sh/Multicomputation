@@ -11,6 +11,7 @@ PackageScope["ApplyHold"]
 PackageScope["OwnValueHead"]
 PackageScope["ElementPositions"]
 PackageScope["MultiPlaceholder"]
+PackageScope["TakeTuples"]
 PackageScope["PatternHead"]
 
 
@@ -114,6 +115,9 @@ MultiPlaceholder[n_] := (
     Protect[MultiPlaceholder];
     MultiPlaceholder[n]
 )
+
+
+TakeTuples[values_, m_] := ResourceFunction["SelectTuples"][values, True &, m]
 
 
 PatternHead = Pattern |

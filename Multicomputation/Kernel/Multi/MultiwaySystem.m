@@ -26,7 +26,7 @@ m : MultiwaySystem[rules_, init_, OptionsPattern[]] /; ! MultiwaySystemQ[Unevalu
         Automatic :> {Switch[type, "Hypergraph", WolframModelMulti, "String", StringMulti, "CA", CAMulti, "WIHypergraph", WIHypergraphMulti, _, HypergraphMulti], {}},
         "Hypergraph" | {"Hypergraph", opts : OptionsPattern[]} :> {WolframModelMulti, {opts}},
         "String" | {"String", opts : OptionsPattern[]} :> {StringMulti, {opts}},
-        {type_, opts : OptionsPattern[]} :> {Switch[type, "Hypergraph", HypergraphMulti, "WolframModel", WolframModelMulti, "String", StringMulti, "CA", CAMulti, "WIHypergraph", WIHypergraphMulti, _, HypergraphMulti], {opts}}
+        {type_, opts : OptionsPattern[]} | type_ :> {Switch[type, "Hypergraph", HypergraphMulti, "WolframModel", WolframModelMulti, "String", StringMulti, "CA", CAMulti, "WIHypergraph", WIHypergraphMulti, _, HypergraphMulti], {opts}}
     }];
     MultiwaySystem[
         Evaluate[method[Unevaluated[init], rules, methodOpts]],
@@ -450,17 +450,19 @@ MultiwaySystemProp[m_, prop : "CausalBranchialGraph" | "EvolutionCausalBranchial
     ]
 
 MultiwaySystemProp[m_, prop : "BranchialGraph" | "AllStatesBranchialGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] := With[{type = m["Type"]},
-Block[{g},
+Block[{edges, g},
+    edges = If[ prop === "BranchialGraph",
+        UndirectedEdge @@@ ReleaseHold[m["Multi"]["Foliations", n - 1][[1, -1, 1]]]["BranchPairs"],
+        Block[{foliations = m["Multi"]["Foliations", n - 1][[1, All, 1]]},
+            Sequence @@ {
+                Catenate[ReleaseHold[#]["Expression"] & /@ foliations],
+                Catenate[UndirectedEdge @@@ ReleaseHold[#]["BranchPairs"] & /@ foliations]
+            }
+        ]
+    ];
     g = Graph[
-        If[ prop === "BranchialGraph",
-            UndirectedEdge @@@ ReleaseHold[m["Multi"]["Foliations", n - 1][[1, -1, 1]]]["BranchPairs"],
-            Block[{foliations = m["Multi"]["Foliations", n - 1][[1, All, 1]]},
-                Sequence @@ {
-                    Catenate[ReleaseHold[#]["Expression"] & /@ foliations],
-                    Catenate[UndirectedEdge @@@ ReleaseHold[#]["BranchPairs"] & /@ foliations]
-                }
-            ]
-        ],
+        VertexList[edges],
+        edges,
         FilterRules[{opts}, Options[Graph]],
         EdgeStyle -> ResourceFunction["WolframPhysicsProjectStyleData"]["BranchialGraph"]["EdgeStyle"],
         VertexShapeFunction -> Function[Tooltip[$StateVertexShapeFunction[type, m["ExtraOptions"]][#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3], #2]],

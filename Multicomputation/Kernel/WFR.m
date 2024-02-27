@@ -1,3 +1,7 @@
+$ParentContext = $Context
+
+Begin["`Private`"]
+
 $WFR = {
     <|
         "Name" -> "MultiReplace",
@@ -6,7 +10,7 @@ $WFR = {
     <|
         (* https://www.wolframcloud.com/obj/nikm/DeployedResources/Function/MultiEvaluate/ *)
         "Name" -> "MultiEvaluate",
-        "FunctionLocation" -> "https://www.wolframcloud.com/obj/nikm/Resources/987/9878b1f6-11d4-4770-825a-5d5c71b9a656/download/DefinitionData"
+        "FunctionLocation" -> "https://www.wolframcloud.com/obj/nikm/Resources/6b9/6b979e16-9243-4be2-9c6c-80037b595d64/download/DefinitionData"
     |>,
     <|
         "Name" -> "TokenEventGraph",
@@ -24,8 +28,10 @@ $WFR = Append[#, {"ResourceType" -> "Function", "SymbolName" -> makeSymbolName[O
 
 cachedResourceFunction[arg_] := cachedResourceFunction[arg] = ResourceFunction[arg]
 
+
+
 Scan[data |->
-    With[{sym = Symbol[$Context <> data["Name"]],
+    With[{sym = Symbol[$ParentContext <> data["Name"]],
         wfr = If[MissingQ[data["FunctionLocation"]], cachedResourceFunction[data["Name"]], cachedResourceFunction[ResourceObject[data]]]
     },
         sym;
@@ -36,3 +42,4 @@ Scan[data |->
     $WFR
 ]
 
+End[]

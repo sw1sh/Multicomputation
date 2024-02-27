@@ -29,14 +29,14 @@ Multi[data_Association] /; ContainsOnly[Keys[data], $MultiKeys] && !ContainsExac
 
 MultiDataQ[data_Association] := MatchQ[data, KeyValuePattern[{
     "Expression" :> _,
-    "Values" -> <||> | KeyValuePattern[_[{_Integer ...}, _]],
+    "Values" -> <||> | KeyValuePattern[_[{{___Integer} ...}, _]],
     "Matches" -> <||> |
         KeyValuePattern[_[
-            {{{_Integer ...} ...}, _String, Repeated[_Rule | RuleDelayed, {0, 1}]},
-            {(_Rule | _RuleDelayed | None) ..}
+            {{{___Integer} ...}, _String, Repeated[_Rule | RuleDelayed, {0, 1}]},
+            {__}
         ]] |
         KeyValuePattern[
-            _[{{{_Integer ...} ...}, "Rule", {_Integer, {<||> | KeyValuePattern[_Pattern :> _] ..}}}, {__}]
+            _[{{{___Integer} ...}, "Rule", {_Integer, {<||> | KeyValuePattern[_Pattern :> _] ..}}}, {__}]
         ],
     "Rules" -> {(_Rule | _RuleDelayed) ...},
     "EvaluateOptions" -> OptionsPattern[],
@@ -158,10 +158,10 @@ Multi /: (f : Except[Multi])[left___, HoldPattern[Multi[alts_List]], right___] :
         ! FreeQ[Unevaluated @ f[left, MultiPlaceholder, right], _Multi, {1}] || MatchQ[Unevaluated@f, _Multi],
         Multi[<|
             "Expression" :> Evaluate @ (f @@ (Unevaluated /@ Hold[left, MultiPlaceholder, right])),
-            "Values" -> <|{i} :> alts|>
+            "Values" -> <|{{i}} :> alts|>
         |>],
         Multi[<|
-            "Expression" :> f[left, MultiPlaceholder, right], "Values" -> <|{i} :> alts|>|>]
+            "Expression" :> f[left, MultiPlaceholder, right], "Values" -> <|{{i}} :> alts|>|>]
     ] /; !SequenceHoldQ[Unevaluated[f[left, MultiPlaceholder, right]]] &&
         !AtomQ[Unevaluated @ f[left, MultiPlaceholder, right]] &&
         !HoldPositionQ[Unevaluated[f[left, MultiPlaceholder, right]], i]
@@ -196,7 +196,7 @@ With[{
 },
     With[{data = multi["Data"]},
     With[{newData = <|data,
-         "Values" -> KeyMap[Prepend[i], data["Values"]],
+         "Values" -> KeyMap[Map[Prepend[i]], data["Values"]],
          "Matches" -> KeyMap[MapAt[Prepend[i], {1, All}], data["Matches"]]
     |>},
         If[ !FreeQ[Unevaluated @ f[left, subExpr, right], _Multi, 1, Heads -> False],
@@ -215,16 +215,16 @@ Multi[alts_List][args___] := With[{ph = MultiPlaceholder[Unique[]]},
         !FreeQ[Unevaluated @ ph[args], _Multi, {1}],
         Multi[<|
             "Expression" :> Evaluate @ ph[args],
-            "Values" -> <|{0} :> alts|>
+            "Values" -> <|{{0}} :> alts|>
         |>],
-        Multi[<|"Expression" :> ph[args], "Values" -> <|{0} :> alts|>|>]
+        Multi[<|"Expression" :> ph[args], "Values" -> <|{{0}} :> alts|>|>]
     ]
 ]
 
 Multi[alts_List, opts : OptionsPattern[$MultiOptions]] := With[{ph = MultiPlaceholder[Unique[]]},
     Multi[<|
         "Expression" :> ph,
-        "Values" -> <|{} :> alts|>,
+        "Values" -> <|{{}} :> alts|>,
         "EvaluateOptions" -> FilterRules[{opts}, Options[MultiEvaluate]],
         "ReplaceOptions" -> FilterRules[{opts}, Options[MultiReplace]],
         "ExtraOptions" -> FilterRules[{opts}, Except[Join[Options[MultiEvaluate], Options[MultiReplace]]]]
