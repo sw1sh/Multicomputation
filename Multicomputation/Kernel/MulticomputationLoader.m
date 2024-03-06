@@ -1,5 +1,7 @@
 BeginPackage["Wolfram`MulticomputationInit`"]
 
+PacletDependency
+
 Begin["`Private`"]
 
 PacletDependency[paclet_, version : _String | None : None] := With[{paclets = Through[PacletFind[paclet]["Version"]]},
