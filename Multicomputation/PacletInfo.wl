@@ -5,7 +5,7 @@ PacletObject[
     "Creator" -> "Wolfram Research",
     "License" -> "MIT",
     "PublisherID" -> "Wolfram",
-    "Version" -> "0.1.4",
+    "Version" -> "0.1.5",
     "WolframVersion" -> "13.1+",
     "PrimaryContext" -> "Wolfram`Multicomputation`",
     "Extensions" -> {
