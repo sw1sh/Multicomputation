@@ -3,7 +3,7 @@ Package["Wolfram`Multicomputation`"]
 
 
 Multi /: MakeBoxes[multi : HoldPattern[Multi[data_ /; AssociationQ[Unevaluated @ data]]], form_] /; multi["ValidQ"] :=
-    Function[Null, With[{values = multi["ValueCount"], matches = multi["MatchCount"], expr := #},
+    Function[Null, With[{values = multi["ValueCount"], matches = multi["MatchCount"], expr := ##},
         BoxForm`ArrangeSummaryBox[
             "Multi",
             Defer @ multi,

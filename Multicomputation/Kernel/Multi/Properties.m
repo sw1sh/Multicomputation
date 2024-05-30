@@ -38,7 +38,7 @@ MultiProp[multi_, prop_String] /; MemberQ[$MultiKeys, prop] := multi["Data"][pro
 
 MultiProp[multi_, "ModifyData", f_] := Multi[f @ multi["Data"]]
 
-MultiProp[multi_, "HoldExpression"] := Extract[multi["Data"], "Expression", HoldForm]
+MultiProp[multi_, "HoldExpression"] := Extract[multi["Data"], "Expression", HoldComplete]
 
 MultiProp[multi_, "Keys"] := Join[Keys @ multi["Values"], Keys @ multi["Matches"]]
 
