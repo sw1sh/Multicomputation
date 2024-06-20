@@ -470,7 +470,7 @@ ApplyWIHypergraphRules[lh_ ? LinkedHypergraphQ, rules_, opts : OptionsPattern[]]
 ]
 
 WIHypergraphMulti[init_ ? HypergraphQ, rule_, opts : OptionsPattern[]] := With[{
-	rules = wrap[rule], hopts = Join[Options[init], {opts}]
+	rules = wrap[rule], hopts = Join[AbsoluteOptions[init], {opts}]
 },
     Multi[
 		{ToLinkedHypergraph[init, "WIHypergraph"]},

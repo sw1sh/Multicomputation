@@ -47,8 +47,8 @@ MultiwaySystemProp[HoldPattern[MultiwaySystem[multi_, _]], "Multi"] := multi
 MultiwaySystemProp[HoldPattern[MultiwaySystem[_, type_]], "Type"] := type
 
 
-StateShape[hg : {{_Integer | _Symbol, __}...}, size_ : Automatic, opts___] := ResourceFunction["WolframModelPlot"][hg, FilterRules[{opts}, Options[ResourceFunction["WolframModelPlot"]]], ImageSize -> size, PlotRangePadding -> 0]
-StateShape[hg_ ? HypergraphQ, size_, opts___] := SimpleHypergraphPlot[hg, FilterRules[{opts}, Options[SimpleHypergraphPlot]], ImageSize -> size]
+StateShape[hg : {{_Integer | _Symbol, __}...}, size_ : Automatic, opts___] := ResourceFunction["WolframModelPlot"][hg, ImageSize -> size, FilterRules[{opts}, Options[ResourceFunction["WolframModelPlot"]]], PlotRangePadding -> 0]
+StateShape[hg_ ? HypergraphQ, size_, opts___] := SimpleHypergraphPlot[hg, ImageSize -> size, FilterRules[{opts}, Options[SimpleHypergraphPlot]]]
 StateShape[_Missing, ___] := ""
 StateShape[expr_, ___] := expr
 
@@ -173,12 +173,14 @@ Options[WIHypergraphEventShape] = Options[Hypergraph]
 
 WIHypergraphEventShape[DirectedEdge[from_, to_, tag_], size_, opts : OptionsPattern[]] := Framed[
     If[ KeyExistsQ[tag, "Match"],
-        First @ HighlightRule[
-            {Replace[tag["Match"], IconizedObject[e_, ___] :> e]},
-            Hypergraph[FromLinkedHypergraph[from, "WIHypergraph"], FilterRules[{opts}, Options[Hypergraph]]],
-            ImageSize -> size / 2
+        Show[
+            First @ HighlightRule[
+                {Replace[tag["Match"], IconizedObject[e_, ___] :> e]},
+                Hypergraph[FromLinkedHypergraph[from, "WIHypergraph"], FilterRules[{opts}, Options[Hypergraph]]]
+            ],
+            ImageSize -> 2 size
         ],
-        SimpleHypergraphPlot[FromLinkedHypergraph[to, "WIHypergraph"], FilterRules[{opts}, Options[SimpleHypergraphPlot]], ImageSize -> size]
+        SimpleHypergraphPlot[FromLinkedHypergraph[to, "WIHypergraph"], ImageSize -> size, FilterRules[{opts}, Options[SimpleHypergraphPlot]]]
     ],
     OptionValue[MultiEvaluate, "EventFrameOptions"]
 ]

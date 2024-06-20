@@ -234,7 +234,7 @@ EvolutionCausalGraph[cg_Graph, type : _String | None : None, opts : OptionsPatte
     ]
 ]
 
-Options[CausalBranchialGraph] = {"Slide" -> False}
+Options[CausalBranchialGraph] = Join[{"Slide" -> False}, Options[Graph]]
 CausalBranchialGraph[cg_Graph, n_Integer : 1, opts : OptionsPattern[]] := Block[{
     branchEdges = SubsetCases[VertexList[cg], {
         a : DirectedEdge[_, _, KeyValuePattern[{"Input" -> x_, "TreePosition" -> {p___, _}}]],
@@ -258,7 +258,7 @@ CausalBranchialGraph[cg_Graph, n_Integer : 1, opts : OptionsPattern[]] := Block[
     ];
     Graph[
         EdgeAdd[cg, slideBranchEdges],
-        opts,
+        FilterRules[{opts}, Options[Graph]],
         VertexCoordinates -> Thread[VertexList[cg] -> GraphEmbedding[cg]],
         EdgeStyle -> (#1 -> Directive[
             ResourceFunction["WolframPhysicsProjectStyleData"]["BranchialGraph"]["EdgeStyle"], Thick, Dashed
