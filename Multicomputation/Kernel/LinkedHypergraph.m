@@ -32,6 +32,16 @@ LinkedHypergraphQ[{{link, _, link...}...}] := True
 LinkedHypergraphQ[___] := False
 
 
+SimpleHypergraphToLinkedHypergraph[hg_List] := With[{vs = Union @@ hg},
+	Join @ MapThread[
+		Join[{#2, None}, #1] &,
+		{
+			hg,
+			Length[vs] + Range[Length[hg]]
+		}
+	]
+]
+
 Options[HypergraphToLinkedHypergraph] = {"Permute" -> True}
 HypergraphToLinkedHypergraph[hg_, OptionsPattern[]] := Module[{perm, iso},
 	{perm, iso} = ResourceFunction["FindCanonicalHypergraphIsomorphism"][hg, "IncludePermutation" -> True];
@@ -40,7 +50,7 @@ HypergraphToLinkedHypergraph[hg_, OptionsPattern[]] := Module[{perm, iso},
 			{
 				If[	TrueQ[OptionValue["Permute"]],
 					Permute[hg /. iso, perm],
-					hg /. iso, Max[iso]
+					hg /. iso
 				],
 				Max[iso] + Range[Length[hg]]
 			}
@@ -429,7 +439,7 @@ WolframModelMulti[init_, rules_, opts : OptionsPattern[]] := With[{
 	patternRules = Map[ToLinkedHypergraph /* LinkedHypergraphRuleToPatternRule, wrap[rules]]
 },
     Multi[
-		ToLinkedHypergraph /@ wrap[init],
+		SimpleHypergraphToLinkedHypergraph /@ wrap[init],
 		RuleDelayed @@ Hold[\[FormalCapitalH]_, ApplyWolframModelRules[\[FormalCapitalH], patternRules]],
 		{1},
 		FilterRules[{opts}, $MultiOptions],

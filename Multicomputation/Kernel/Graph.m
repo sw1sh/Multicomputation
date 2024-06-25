@@ -227,7 +227,7 @@ EvolutionCausalGraph[cg_Graph, type : _String | None : None, opts : OptionsPatte
     Graph[
         If[TrueQ[OptionValue["IncludeInitialEvent"]], Identity, VertexDelete[#, DirectedEdge[{{_, _Missing}}, __]] &] @
             EdgeAdd[cg, multiwayEdges, VertexLabels -> None],
-        opts,
+        FilterRules[{opts}, Options[Graph]],
         EdgeStyle -> (# -> ResourceFunction["WolframPhysicsProjectStyleData"]["StatesGraph"]["EdgeStyle"] & /@ multiwayEdges),
         VertexLabels -> If[type === None, None, # -> Automatic & /@ states],
         VertexStyle -> (# -> Directive[ResourceFunction["WolframPhysicsProjectStyleData"]["StatesGraph"]["VertexStyle"], EdgeForm[]] & /@ states)

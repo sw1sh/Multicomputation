@@ -2,6 +2,7 @@ Package["Wolfram`Multicomputation`"]
 
 PackageImport["Wolfram`MulticomputationInit`"]
 PackageImport["WolframInstitute`Hypergraph`"]
+PackageImport["SetReplace`"]
 
 PackageExport["MultiwaySystemQ"]
 PackageExport["MultiwaySystem"]
@@ -19,7 +20,7 @@ Options[MultiwaySystem] = {Method -> Automatic}
 MultiwaySystem[rules_, opts : OptionsPattern[]] := MultiwaySystem[rules, FirstCase[Unevaluated[rules], (Rule | RuleDelayed)[lhs_, _] :> {lhs}, All], opts]
 
 m : MultiwaySystem[rules_, init_, OptionsPattern[]] /; ! MultiwaySystemQ[Unevaluated[m]] := Enclose @ Block[{
-    type = First[ConfirmBy[MultiwayType /@ wrap[rules], Apply[Equal]]],
+    type = First[MultiwayType /@ wrap[rules]],
     method, methodOpts
 },
     {method, methodOpts} = Replace[OptionValue[Method], {
@@ -47,7 +48,7 @@ MultiwaySystemProp[HoldPattern[MultiwaySystem[multi_, _]], "Multi"] := multi
 MultiwaySystemProp[HoldPattern[MultiwaySystem[_, type_]], "Type"] := type
 
 
-StateShape[hg : {{_Integer | _Symbol, __}...}, size_ : Automatic, opts___] := ResourceFunction["WolframModelPlot"][hg, ImageSize -> size, FilterRules[{opts}, Options[ResourceFunction["WolframModelPlot"]]], PlotRangePadding -> 0]
+StateShape[hg : {__List}, size_ : Automatic, opts___] := ResourceFunction["WolframModelPlot"][hg, FilterRules[{ImageSize -> size, opts}, Options[HypergraphPlot]], PlotRangePadding -> 0]
 StateShape[hg_ ? HypergraphQ, size_, opts___] := SimpleHypergraphPlot[hg, ImageSize -> size, FilterRules[{opts}, Options[SimpleHypergraphPlot]]]
 StateShape[_Missing, ___] := ""
 StateShape[expr_, ___] := expr
@@ -155,7 +156,7 @@ Framed[
             ResourceFunction["WolframModelPlot"][DeleteCases[{}] @ lhs,
                 GraphHighlight -> DeleteCases[{}] @ Extract[lhs, Position[from, {Alternatives @@ tag["Input"], ___}]],
                 GraphHighlightStyle -> Dashed,
-                ImageSize -> size / 2
+                ImageSize -> size
             ]
         ],
         Graphics[{LightGray, FilledCurve[
@@ -163,7 +164,7 @@ Framed[
             {{{-1., 0.1848}, {0.2991, 0.1848}, {-0.1531, 0.6363}, {0.109, 0.8982}, {1., 0.0034},
             {0.109, -0.8982}, {-0.1531, -0.6363}, {0.2991, -0.1848}, {-1., -0.1848}, {-1., 0.1848}}}
         ]}, ImageSize -> size / 5],
-        ResourceFunction["WolframModelPlot"][DeleteCases[{}] @ rhs, GraphHighlight -> DeleteCases[{}] @ Extract[rhs, Position[to, {Alternatives @@ tag["Output"], ___}]], ImageSize -> size / 2]
+        ResourceFunction["WolframModelPlot"][DeleteCases[{}] @ rhs, GraphHighlight -> DeleteCases[{}] @ Extract[rhs, Position[to, {Alternatives @@ tag["Output"], ___}]], ImageSize -> size]
     }],
     OptionValue[MultiEvaluate, "EventFrameOptions"]
 ]
