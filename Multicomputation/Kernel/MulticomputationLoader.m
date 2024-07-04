@@ -14,6 +14,7 @@ End[]
 
 Get[FileNameJoin[{DirectoryName[$InputFileName], "WFR.m"}]]
 
+PacletDependency["SetReplace"]
 PacletDependency["WolframInstitute/Hypergraph"]
 
 EndPackage[]
