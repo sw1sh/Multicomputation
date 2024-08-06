@@ -92,11 +92,11 @@ lineGraph[g_, opts : OptionsPattern[Graph]] := With[{
 removeCycles[g_] := EdgeDelete[EdgeDelete[g, FindCycle[g, Infinity, All][[All, -1]]], _[x_, x_, ___]]
 
 
-Options[EvolutionGraph] := Join[{"Hold" -> False}, Options[Graph]]
+Options[EvolutionGraph] := Join[{"Hold" -> False, "RetraceVisited" -> True}, Options[Graph]]
 
 SetAttributes[EvolutionGraph, HoldFirst]
 
-EvolutionGraph[multi_Multi, steps_Integer : 1, lvl_Integer : 2, opts : OptionsPattern[]] := Block[{i = 0, holdQ = TrueQ[OptionValue["Hold"]]},
+EvolutionGraph[multi_Multi, steps_Integer : 1, lvl_Integer : 2, opts : OptionsPattern[]] := Block[{i = 0, holdQ = TrueQ[OptionValue["Hold"]], visited = {}},
     Graph[
         If[ holdQ,
             If[MatchQ[#, HoldForm[_List]], First @ Map[HoldForm, #, {2}], {#}] & @ multi["HoldExpression"],
@@ -120,16 +120,22 @@ EvolutionGraph[multi_Multi, steps_Integer : 1, lvl_Integer : 2, opts : OptionsPa
                         )
                     },
                         If[ Length @ edges > 0,
-                            Hold[
-                                Evaluate @ If[
-                                    holdQ,
-                                    Function[
-                                        Null,
-                                        Multi[Unevaluated @ {##}, multi["AllReplaceArguments"]],
-                                        HoldAll
-                                    ] @@ Flatten[HoldForm @@ #] &,
-                                    Multi[#, multi["AllReplaceArguments"]] &
-                                ] @ DeleteDuplicates @ edges[[All, 2]]
+                            Block[{outputs = DeleteDuplicates @ edges[[All, 2]]},
+                                If[ ! TrueQ[OptionValue["RetraceVisited"]],
+                                    visited = Union[visited, outputs];
+                                    outputs = Complement[outputs, visited]
+                                ];
+                                Hold[
+                                    Evaluate @ If[
+                                        holdQ,
+                                        Function[
+                                            Null,
+                                            Multi[Unevaluated @ {##}, multi["AllReplaceArguments"]],
+                                            HoldAll
+                                        ] @@ Flatten[HoldForm @@ #] &,
+                                        Multi[#, multi["AllReplaceArguments"]] &
+                                    ] @ outputs
+                                ]
                             ],
                             #
                         ]
