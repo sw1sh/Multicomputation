@@ -480,7 +480,7 @@ ApplyWIHypergraphRules[lh_ ? LinkedHypergraphQ, rules_, opts : OptionsPattern[]]
 ]
 
 WIHypergraphMulti[init_ ? HypergraphQ, rule_, opts : OptionsPattern[]] := With[{
-	rules = wrap[rule], hopts = Join[AbsoluteOptions[init], {opts}]
+	rules = wrap[rule], hopts = Join[Options[init], {opts}]
 },
     Multi[
 		{ToLinkedHypergraph[init, "WIHypergraph"]},
@@ -488,7 +488,7 @@ WIHypergraphMulti[init_ ? HypergraphQ, rule_, opts : OptionsPattern[]] := With[{
 		{1},
 		FilterRules[{opts}, $MultiOptions],
 		"DeepMultiEvaluate" -> False,
-		"ExtraOptions" -> FilterRules[{hopts}, Options[Hypergraph]]
+		"ExtraOptions" -> FilterRules[hopts, Options[Hypergraph]]
 	]
 ]
 

@@ -78,7 +78,7 @@ Multi[
     rules : {Except[$MultiOptionsPattern, _Rule | _RuleDelayed] ...},
     arg : {} | {{}} | Except[OptionsPattern[$MultiOptions]] : Automatic,
     head_Symbol : List,
-    opts : OptionsPattern[]] :=
+    opts : OptionsPattern[$MultiOptions]] :=
 With[{
     multi = Which[
         MatchQ[Hold[expr], Hold[_Multi]],
@@ -87,7 +87,7 @@ With[{
         MatchQ[Unevaluated @ expr, head[head[]]],
         Multi[<|"Expression" :> head[]|>],
 
-        MatchQ[Unevaluated @ expr, _head],
+        MatchQ[Unevaluated @ expr, _head | {___head}],
         If[
             TrueQ[OptionValue[Multi, {opts}, "DeepMultiEvaluate"]],
             MapAt[
@@ -125,7 +125,10 @@ With[{
         "EvaluateOptions" -> FilterRules[{opts}, Options[MultiEvaluate]],
         "ReplaceArguments" -> Sequence[arg, head],
         "ReplaceOptions" -> FilterRules[{opts}, Options[MultiReplace]],
-        "ExtraOptions" -> FilterRules[{opts, OptionValue[Multi, {opts}, "ExtraOptions"]}, Except[Join[Options[MultiEvaluate], Options[MultiReplace]] | "ExtraOptions"]]
+        "ExtraOptions" -> FilterRules[
+            {opts, OptionValue[Multi, {opts}, "ExtraOptions"]},
+            Except[Append[Join[FilterRules[Options[MultiEvaluate], Except[Options[Graph]]], Options[MultiReplace]], "ExtraOptions"]]
+        ]
     |>]
     ]]
 ]

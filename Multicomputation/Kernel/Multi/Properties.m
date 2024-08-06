@@ -78,7 +78,7 @@ MultiProp[multi_, "ListValues"] := With[{expr = Unevaluated @@ multi["HoldExpres
             MatchQ[#1, {{___Integer} ...}],
             #2,
             MatchQ[#1, {_, "Rule", _}],
-            Catenate[ReleaseHold @ #2],
+            Flatten[ReleaseHold @ #2, 1],
             True,
             Function[x, ReplaceList[Unevaluated @ x, #2], HoldAllComplete] @@
             First @ Extract[expr, First @ #1, HoldComplete]
