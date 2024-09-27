@@ -253,6 +253,7 @@ ToLinkedHypergraph[expr_, autoType : _String | Automatic : Automatic] := With[{t
 ]
 
 ToLinkedHypergraph[expr_, patt_] := PatternToLinkedHypergraph[expr, patt]
+ResourceFunction["AddCodeCompletion"]["ToLinkedHypergraph"][None, {"String", "List", "Hypergraph", "ConstructExpression", "Expression", "Graph", "Tree", "CA", "WIHypergraph"}]
 
 
 FromLinkedHypergraph[hg : {_List...}, type : _String | None : "Graph", opts : OptionsPattern[]] := FromLinkedHypergraph[Select[hg, Length[#] > 1 &], type, opts]
@@ -280,6 +281,7 @@ FromLinkedHypergraph[hg : {{_, _, ___} ...}, type : _String | None : "Graph", op
 	_,
 	LinkedHypergraphToGraph[hg, opts]
 ]
+ResourceFunction["AddCodeCompletion"]["FromLinkedHypergraph"][None, {"Tree", "Expression", "ConstructExpression", "HoldExpression", "List", "String", "CA", "Hypergraph", "WIHypergraph", "Graph"}]
 
 
 CanonicalHypergraphRule[rule : (lhs : {{__}...} -> {{__}...})] := Rule @@ TakeDrop[CanonicalHypergraph[List @@ rule, 1], Length[lhs]]
