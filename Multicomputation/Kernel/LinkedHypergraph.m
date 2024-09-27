@@ -129,7 +129,7 @@ UniquifyIndexedTree[tree_Tree] :=
 	TreeMapAt[
 		MapAt[Sow[Unique[], "UniqueIndex"] &, {1}],
 		tree,
-		Catenate[Rest @ TreePosition[tree, #] & /@ Keys @ Select[Counts[TreeData /@ TreeLeaves[tree]], # > 1 &]]
+		Catenate[Rest @ TreePosition[tree, {#, _}] & /@ Keys @ Select[CountsBy[TreeLevel[tree, All -> "Data"], First], # > 1 &]]
 	]
 
 LinkedHypergraphToTree[hg : {{_, _, ___} ...}, opts : OptionsPattern[]] := TreeMap[Last] @ LinkedHypergraphToIndexedTree[hg, opts]
