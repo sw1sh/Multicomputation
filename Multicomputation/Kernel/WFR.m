@@ -2,10 +2,10 @@ $ParentContext = $Context
 
 Begin["`Private`"]
 
+If[! ListQ[$WFR],
 $WFR = {
     <|
-        "Name" -> "MultiReplace",
-        "FunctionLocation" -> CloudObject["https://www.wolframcloud.com/obj/nikm/Resources/e95/e95e886d-0871-40ac-9167-a03825e05f6b/download/DefinitionData"]
+        "Name" -> "MultiReplace"
     |>,
     <|
         (* https://www.wolframcloud.com/obj/nikm/DeployedResources/Function/MultiEvaluate/ *)
@@ -21,18 +21,22 @@ $WFR = {
         "FunctionLocation" -> CloudObject["https://www.wolframcloud.com/obj/nikm/Resources/297/2979a6b7-6a0d-421e-a09c-70d779019894/download/DefinitionData"]
     |>
 }
+]
 
 makeSymbolName[uuid_String, name_String] := "FunctionRepository`$" <> StringDelete[uuid, "-"] <> "`" <> name;
 
-$WFR = Append[#, {"ResourceType" -> "Function", "SymbolName" -> makeSymbolName[Once[Import[#["FunctionLocation"]]]["UUID"], #["Name"]]}] & /@ $WFR
+$WFR = Append[#, {
+    "ResourceType" -> "Function",
+    If[MissingQ[data["FunctionLocation"]] || KeyExistsQ[#, "SymbolName"], Nothing, "SymbolName" -> makeSymbolName[Once[Import[#["FunctionLocation"]]]["UUID"], #["Name"]]]}
+] & /@ $WFR
 
-cachedResourceFunction[arg_] := cachedResourceFunction[arg] = ResourceFunction[arg]
+cachedResourceFunction[arg_] := cachedResourceFunction[arg] = If[StringQ[arg], ResourceFunction[arg], ResourceFunction[ResourceObject[arg]]]
 
 
 
 Scan[data |->
     With[{sym = Symbol[$ParentContext <> data["Name"]],
-        wfr = If[MissingQ[data["FunctionLocation"]], cachedResourceFunction[data["Name"]], cachedResourceFunction[ResourceObject[data]]]
+        wfr = If[MissingQ[data["FunctionLocation"]], cachedResourceFunction[data["Name"]], cachedResourceFunction[data]]
     },
         sym;
         sym[args___] := wfr[args];
