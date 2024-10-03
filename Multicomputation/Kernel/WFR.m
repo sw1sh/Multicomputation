@@ -27,7 +27,7 @@ makeSymbolName[uuid_String, name_String] := "FunctionRepository`$" <> StringDele
 
 $WFR = Append[#, {
     "ResourceType" -> "Function",
-    If[MissingQ[data["FunctionLocation"]] || KeyExistsQ[#, "SymbolName"], Nothing, "SymbolName" -> makeSymbolName[Once[Import[#["FunctionLocation"]]]["UUID"], #["Name"]]]}
+    If[MissingQ[#["FunctionLocation"]] || KeyExistsQ[#, "SymbolName"], Nothing, "SymbolName" -> makeSymbolName[Once[Import[#["FunctionLocation"]]]["UUID"], #["Name"]]]}
 ] & /@ $WFR
 
 cachedResourceFunction[arg_] := cachedResourceFunction[arg] = If[StringQ[arg], ResourceFunction[arg], ResourceFunction[ResourceObject[arg]]]
