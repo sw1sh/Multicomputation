@@ -113,7 +113,7 @@ Block[{g},
 StringSubstitutionEventShape[DirectedEdge[from_, to_, tag_], size_, ___] := Framed[
     Style[
         Row @ SequenceReplace[
-            SequenceReplace[from,
+            SequenceReplace[wrap[from],
                 vs : {{Alternatives @@ tag["Input"], ___}...} :>
                     Column[{
                         FromLinkedHypergraph[vs, "String"],

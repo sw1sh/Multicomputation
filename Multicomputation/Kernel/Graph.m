@@ -60,7 +60,7 @@ AddInitState[g_Graph, i_Integer : 0] := EdgeAdd[
         Which[
             MatchQ[#1, {_ ? LinkedHypergraphQ, _Integer}],
             With[{l = #1[[1, 1, 1]]},
-                DirectedEdge[{{{l, Missing[i]}}, #1}, #1, <|"Input" -> {l}, "Output" -> #1[[1, All, 1]], "Rule" -> 0, "Position" -> {{1}}, "MatchPositions" -> {{}}, "MatchType" -> "Init", "Step" -> i + 1|>]
+                DirectedEdge[{{{l, Missing[i]}}, #1[[2]] - 1}, #1, <|"Input" -> {l}, "Output" -> #1[[1, All, 1]], "Rule" -> 0, "Position" -> {{1}}, "MatchPositions" -> {{}}, "MatchType" -> "Init", "Step" -> i + 1|>]
             ],
             MatchQ[#1, _ ? LinkedHypergraphQ],
             DirectedEdge[{{i, Missing[i]}}, #1, <|"Input" -> {i}, "Output" -> #1[[All, 1]], "Rule" -> 0, "Position" -> {{1}}, "MatchPositions" -> {{}}, "MatchType" -> "Init", "Step" -> i + 1|>],
@@ -155,11 +155,11 @@ EvolutionGraph[multi_Multi, steps_Integer : 1, lvl_Integer : 2, opts : OptionsPa
 Options[CausalGraph] = Join[{"IncludeInitialEvent" -> True, "TransitiveReduction" -> True, "EdgeDeduplication" -> True, "CanonicalizeStates" -> False}, Options[Graph]]
 
 CausalGraph[g_, type : _String | None : None, opts : OptionsPattern[]] := Enclose @ Block[{gg = g, i = -1, lg, nodes, positions, events, links, repl, mat},
+    gg = Graph[DirectedEdge[{#[[1]], #[[3, "Step"]] - 1}, {#[[2]], #[[3, "Step"]]}, #[[3]]] & /@ EdgeList[gg]];
     If[
         Count[VertexInDegree[gg], 0] > 1,
         gg = AddInitState[gg, i--]
     ];
-    gg = Graph[DirectedEdge[{#[[1]], #[[3, "Step"]] - 1}, {#[[2]], #[[3, "Step"]]}, #[[3]]] & /@ EdgeList[gg]];
     gg = AddInitState[gg, i];
     lg = IndexGraph @ lineGraph @ gg;
     nodes = If[
