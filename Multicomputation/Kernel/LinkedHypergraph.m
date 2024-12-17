@@ -449,11 +449,12 @@ WolframModelMulti[init_, rules_, opts : OptionsPattern[]] := With[{
 	]
 ]
 
+Options[StringMulti] = {"Cyclic" -> False}
 StringMulti[init_, rule_, opts : OptionsPattern[]] := With[{
 	rules = wrap[rule]
 },
 	Multi[
-		ToLinkedHypergraph[#, "String"] & /@ wrap[init],
+		If[TrueQ[OptionValue["Cyclic"]], ReplacePart[{-1, 3} -> 1], Identity] @ ToLinkedHypergraph[#, "String"] & /@ wrap[init],
 		RuleDelayed @@ Hold[\[FormalCapitalH]_, ApplyStringRules[\[FormalCapitalH], rules]],
 		{1},
 		FilterRules[{opts}, $MultiOptions],
