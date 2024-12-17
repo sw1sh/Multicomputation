@@ -117,7 +117,7 @@ StringSubstitutionEventShape[DirectedEdge[from_, to_, tag_], size_, ___] := Fram
                 vs : {{Alternatives @@ tag["Input"], ___}...} :>
                     Column[{
                         FromLinkedHypergraph[vs, "String"],
-                        If[ vs[[-1, 1]] == tag["Input"][[1]],
+                        If[ vs[[1, 1]] == tag["Input"][[1]],
                             FromLinkedHypergraph[Cases[to, {Alternatives @@ tag["Output"], ___}], "String"],
                             ""
                         ]

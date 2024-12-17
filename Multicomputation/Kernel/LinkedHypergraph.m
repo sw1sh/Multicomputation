@@ -141,7 +141,7 @@ LinkedHypergraphToList[hg : {{_, _, ___} ...}, OptionsPattern[]] := Enclose @ De
 
 StringToLinkedHypergraph[s_] := ListToLinkedHypergraph[Characters[s]]
 
-LinkedHypergraphToString[hg : {{_, _, ___} ...}, OptionsPattern[]] := Enclose @ StringJoin[ToString /@ ConfirmBy[LinkedHypergraphToList[hg], ListQ]]
+LinkedHypergraphToString[hg : {{_, _, ___} ...}, OptionsPattern[]] := Enclose @ StringJoin[ToString /@ ConfirmBy[LinkedHypergraphToList[SortBy[hg, First]], ListQ]]
 
 
 PatternToLinkedHypergraph[Verbatim[HoldPattern][expr_] | expr_, patt_ : None] := If[patt === None,

@@ -22,7 +22,7 @@ MultiStringReplace[s_String, rules : {_Rule...}, opts : OptionsPattern[]] :=
 
 Options[StringReplaceKeys] = {"Cyclic" -> False}
 
-StringReplaceKeys[s_String, rule_Rule, OptionsPattern[]] := With[{strPos = If[TrueQ[OptionValue["Cyclic"]], Biology`Private`BioSequenceDefinitions`obtainCircularPositions, StringPosition]},
+StringReplaceKeys[s_String, rule_Rule, OptionsPattern[]] := With[{strPos = If[TrueQ[OptionValue["Cyclic"]], Needs["Biology`"]; Biology`Private`BioSequenceDefinitions`obtainCircularPositions, StringPosition]},
     ResourceFunction["SelectTuples"][strPos[s, #] & /@ wrap[First[rule]], Length[#] === 1 || IntervalIntersection @@ (Interval /@ #) === Interval[] &]
 ]
 
