@@ -62,6 +62,6 @@ ApplyStringRules[hg_ ? LinkedHypergraphQ, rule_] := With[{rules = wrap[rule], le
                 If[start <= end, start, start - end]
             ]
         ] &,
-        StringReplaceKeys[StringJoin[hg[[All, 2]]], rules, "Cyclic" -> hg[[-1, 3]] == 1]
+        StringReplaceKeys[StringJoin[hg[[All, 2]]], rules, "Cyclic" -> hg[[-1, 3]] === hg[[1, 1]]]
     ]
 ]
