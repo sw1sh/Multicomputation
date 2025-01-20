@@ -49,7 +49,7 @@ MultiwaySystemProp[HoldPattern[MultiwaySystem[_, type_]], "Type"] := type
 
 
 StateShape[hg : {__List}, size_ : Automatic, opts___] := ResourceFunction["WolframModelPlot"][hg, FilterRules[{ImageSize -> size, opts}, Options[HypergraphPlot]], PlotRangePadding -> 0]
-StateShape[hg_ ? HypergraphQ, size_, opts___] := SimpleHypergraphPlot[hg, ImageSize -> size, FilterRules[{opts}, Options[SimpleHypergraphPlot]]]
+StateShape[hg_ ? HypergraphQ, size_, opts___] := SimpleHypergraphPlot[Hypergraph[hg, FilterRules[{opts}, Options[Hypergraph]]], ImageSize -> size]
 StateShape[_Missing, ___] := ""
 StateShape[expr_, ___] := expr
 
@@ -79,7 +79,7 @@ Block[{g},
         GraphLayout -> "LayeredDigraphEmbedding",
         PerformanceGoal -> "Quality"
     ];
-    g = canonicalizeStates[g, type, FilterRules[{opts}, Options[canonicalizeStates]]];
+    g = canonicalizeStates[g, type, FilterRules[{opts}, Options[canonicalizeStates]], "ExtraOptions" -> m["ExtraOptions"]];
     g
 ]]
 
@@ -106,7 +106,7 @@ Block[{g},
     If[ TrueQ[Lookup[{opts}, "IncludeInitialState"]],
         g = EdgeAdd[g, DirectedEdge[{{1, Missing[]}}, #] & /@ m["Expression"]]
     ];
-    g = canonicalizeStates[g, type, FilterRules[{opts}, Options[canonicalizeStates]], "CanonicalStateFunction" -> Automatic];
+    g = canonicalizeStates[g, type, FilterRules[{opts}, Options[canonicalizeStates]], "ExtraOptions" -> m["ExtraOptions"], "CanonicalStateFunction" -> Automatic];
     g
 ]]
 
@@ -320,14 +320,15 @@ CanonicalEventFunction[event : DirectedEdge[Interpretation[ifrom_ : None, from_]
     ]
 ]
 
-Options[canonicalizeStates] = Join[{"CanonicalStateFunction" -> None}, Options[Graph]];
+Options[canonicalizeStates] = Join[{"CanonicalStateFunction" -> None, "ExtraOptions" -> {}}, Options[Graph]];
 canonicalizeStates[g_, type_, opts : OptionsPattern[]] := With[{
     stateCanonicalFunction = Replace[OptionValue["CanonicalStateFunction"], {
         Automatic -> Function[FromLinkedHypergraph[#, type]],
         "Canonical" | "CanonicalHypergraph" /; type === "WIHypergraph" :> ToLinkedHypergraph @* CanonicalHypergraph @* (FromLinkedHypergraph[ReplacePart[#, {_, 2} -> Automatic], type] &),
         "Canonical" | "CanonicalHypergraph" -> CanonicalLinkedHypergraph,
         Full -> Function[FromLinkedHypergraph[CanonicalLinkedHypergraph[#], type]]
-    }]
+    }],
+    extra = OptionValue["ExtraOptions"]
 },
     If[ stateCanonicalFunction === None,
         g,
@@ -336,8 +337,8 @@ canonicalizeStates[g_, type_, opts : OptionsPattern[]] := With[{
             FilterRules[{opts}, Options[Graph]],
             VertexShapeFunction -> Except[_DirectedEdge] -> Switch[
                 OptionValue["CanonicalStateFunction"],
-                Automatic | Full, (Tooltip[$StateVertexShapeFunction[type][##], #2] &),
-                _, (Tooltip[$StateVertexShapeFunction[type][#1, FromLinkedHypergraph[#2, type], #3], #2] &)
+                Automatic | Full, (Tooltip[$StateVertexShapeFunction[type, extra][##], #2] &),
+                _, (Tooltip[$StateVertexShapeFunction[type, extra][#1, FromLinkedHypergraph[#2, type], #3], #2] &)
             ]
         ]
     ]
@@ -421,7 +422,7 @@ With[{type = m["Type"]},
         GraphLayout -> "LayeredDigraphEmbedding",
         PerformanceGoal -> "Quality"
     ];
-    g = canonicalizeStates[g, type, FilterRules[{opts}, Options[canonicalizeStates]]];
+    g = canonicalizeStates[g, type, FilterRules[{opts}, Options[canonicalizeStates]], "ExtraOptions" -> m["ExtraOptions"]];
     g = canonicalizeEvents[g, type, FilterRules[{opts}, Options[canonicalizeEvents]]];
     g
 ]
@@ -443,7 +444,7 @@ MultiwaySystemProp[m_, prop : "EvolutionBranchialGraph", n : _Integer ? Positive
             GraphLayout -> "LayeredDigraphEmbedding",
             PerformanceGoal -> "Quality"
         ];
-        g = canonicalizeStates[g, type, FilterRules[{opts}, Options[canonicalizeStates]]];
+        g = canonicalizeStates[g, type, FilterRules[{opts}, Options[canonicalizeStates]], "ExtraOptions" -> m["ExtraOptions"]];
         g
     ]
 ]
@@ -475,7 +476,7 @@ Block[{edges, g},
         VertexSize -> If[StringEndsQ[type, "Hypergraph"], 64, Automatic],
         PerformanceGoal -> "Quality"
     ];
-    g = canonicalizeStates[g, type, FilterRules[{opts}, Options[canonicalizeStates]], "CanonicalStateFunction" -> Automatic];
+    g = canonicalizeStates[g, type, FilterRules[{opts}, Options[canonicalizeStates]], "CanonicalStateFunction" -> Automatic, "ExtraOptions" -> m["ExtraOptions"]];
     g
 ]]
 
