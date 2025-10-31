@@ -25,7 +25,6 @@ m : MultiwaySystem[rules_, init_, OptionsPattern[]] /; ! MultiwaySystemQ[Unevalu
 },
     {method, methodOpts} = Replace[OptionValue[Method], {
         Automatic :> {Switch[type, "Hypergraph", WolframModelMulti, "String", StringMulti, "CA", CAMulti, "WIHypergraph", WIHypergraphMulti, _, HypergraphMulti], {}},
-        "Hypergraph" | {"Hypergraph", opts : OptionsPattern[]} :> {WolframModelMulti, {opts}},
         "String" | {"String", opts : OptionsPattern[]} :> {StringMulti, {opts}},
         {type_, opts : OptionsPattern[]} | type_ :> {Switch[type, "Hypergraph", HypergraphMulti, "WolframModel", WolframModelMulti, "String", StringMulti, "CA", CAMulti, "WIHypergraph", WIHypergraphMulti, _, HypergraphMulti], {opts}}
     }];
@@ -71,7 +70,7 @@ $StateVertexShapeFunction[type_, opts___] := Function[Inset[
 MultiwaySystemProp[m_, "Graph" | "EvolutionGraph", n : _Integer ? Positive : 1, opts : OptionsPattern[]] := With[{type = m["Type"]},
 Block[{g},
     g = m["Multi"]["Graph", n,
-        FilterRules[{opts}, Options[Graph]],
+        FilterRules[{opts}, Options[EvolutionGraph]],
         VertexLabels -> Placed[Automatic, Tooltip],
         VertexShapeFunction -> With[{extra = m["ExtraOptions"]}, Tooltip[$StateVertexShapeFunction[type, extra][#1, FromLinkedHypergraph[#2, Replace[type, "Expression" -> "HoldExpression"]], #3], #2] &],
         VertexSize -> If[StringEndsQ[type, "Hypergraph"], 64, Automatic],
@@ -186,7 +185,8 @@ WIHypergraphEventShape[DirectedEdge[from_, to_, tag_], size_, opts : OptionsPatt
         ],
         SimpleHypergraphPlot[FromLinkedHypergraph[to, "WIHypergraph"], ImageSize -> size, FilterRules[{opts}, Options[SimpleHypergraphPlot]]]
     ],
-    OptionValue[MultiEvaluate, "EventFrameOptions"]
+    OptionValue[MultiEvaluate, "EventFrameOptions"],
+    FrameMargins -> size
 ]
 
 DefaultEventShape[DirectedEdge[from_, to_, tag_], size_, ___] := Framed[
@@ -306,7 +306,7 @@ Block[{g},
         PerformanceGoal -> "Quality"
     ];
     g = canonicalizeTokens[g, type, FilterRules[{opts}, Options[canonicalizeTokens]]];
-    g = canonicalizeEvents[g, type, FilterRules[{opts}, Options[canonicalizeEvents]], VertexShapeFunction -> _DirectedEdge -> $EventVertexShapeFunction["Tokens"]];
+    g = canonicalizeEvents[g, type, FilterRules[{opts}, Options[canonicalizeEvents]], VertexShapeFunction -> _DirectedEdge -> $EventVertexShapeFunction["Tokens", m["ExtraOptions"]]];
     g
 ]]
 

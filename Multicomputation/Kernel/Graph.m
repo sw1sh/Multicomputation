@@ -92,7 +92,7 @@ lineGraph[g_, opts : OptionsPattern[Graph]] := With[{
 removeCycles[g_] := EdgeDelete[EdgeDelete[g, FindCycle[g, Infinity, All][[All, -1]]], _[x_, x_, ___]]
 
 
-Options[EvolutionGraph] := Join[{"Hold" -> False, "RetraceVisited" -> True}, Options[Graph]]
+Options[EvolutionGraph] := Join[{"Hold" -> False, "RetraceVisited" -> True, "Simple" -> False}, Options[Graph]]
 
 SetAttributes[EvolutionGraph, HoldFirst]
 
@@ -108,7 +108,7 @@ EvolutionGraph[multi_Multi, steps_Integer : 1, lvl_Integer : 2, opts : OptionsPa
                     With[{
                         edges = (
                             i++;
-                            Sow[Map[
+                            Sow[If[TrueQ[OptionValue["Simple"]], DeleteDuplicatesBy[#[[2]] &], Identity] @ Map[
                                 ReplacePart[#, {3} ->
                                     Append[
                                         If[Length[#[[3]]] > 3, #[[3, 4]], <||>],
@@ -122,8 +122,8 @@ EvolutionGraph[multi_Multi, steps_Integer : 1, lvl_Integer : 2, opts : OptionsPa
                         If[ Length @ edges > 0,
                             Block[{outputs = DeleteDuplicates @ edges[[All, 2]]},
                                 If[ ! TrueQ[OptionValue["RetraceVisited"]],
+                                    outputs = Complement[outputs, visited];
                                     visited = Union[visited, outputs];
-                                    outputs = Complement[outputs, visited]
                                 ];
                                 Hold[
                                     Evaluate @ If[

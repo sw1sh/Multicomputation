@@ -482,11 +482,11 @@ ApplyWIHypergraphRules[lh_ ? LinkedHypergraphQ, rules_, opts : OptionsPattern[]]
 	]
 ]
 
-WIHypergraphMulti[init_ ? HypergraphQ, rule_, opts : OptionsPattern[]] := With[{
-	rules = wrap[rule], hopts = Join[Options[init], {opts}]
+WIHypergraphMulti[init_, rule_, opts : OptionsPattern[]] := With[{
+	rules = wrap[rule], hopts = Join[Options[First[wrap[init], {}]], {opts}]
 },
     Multi[
-		{ToLinkedHypergraph[init, "WIHypergraph"]},
+		ToLinkedHypergraph[#, "WIHypergraph"] & /@ wrap[init],
 		RuleDelayed @@ Hold[\[FormalCapitalH]_, ApplyWIHypergraphRules[\[FormalCapitalH], rules, hopts]],
 		{1},
 		FilterRules[{opts}, $MultiOptions],
@@ -507,7 +507,7 @@ WIHypergraphToLinkedHypergraph[hg_ ? HypergraphQ] := Block[{vertices, edges},
 ]
 
 LinkedHypergraphWIHypergraph[hg_, OptionsPattern[]] := Block[{vertices, edges},
-	{vertices, edges} = Lookup[GroupBy[hg, MatchQ[#[[1]], \[FormalE][_]] || MatchQ[#[[2]], None] &], {False, True}, {}];
+	{vertices, edges} = Lookup[GroupBy[hg, MatchQ[#[[1]], \[FormalE][_]] &], {False, True}, {}];
 	Hypergraph[vertices[[All, 1]], edges[[All, 3 ;;]], VertexLabels -> Rule @@@ vertices, EdgeLabels -> Thread[edges[[All, 3 ;;]] -> edges[[All, 2]]]]
 ]
 

@@ -452,12 +452,12 @@ MultiProp[multi_, "HoldGraph", n_Integer : 1, opts___] := EvolutionGraph[multi, 
 MultiProp[multi_, "CausalGraph", n_Integer : 1, opts___] := CausalGraph[multi["Graph", n, FilterRules[{opts}, FilterRules[Options[EvolutionGraph], Except[Options[Graph]]]]], FilterRules[{opts}, Options[CausalGraph]]]
 
 MultiProp[multi_, "TokenEventGraph", n_Integer : 1, opts___] := MultiTokenEventGraph[
-    multi["CausalGraph", n, FilterRules[{opts}, FilterRules[Options[EvolutionGraph], Except[Options[Graph]]]]],
+    multi["CausalGraph", n, FilterRules[{opts}, FilterRules[{Options[EvolutionGraph], Options[CausalGraph]}, Except[Options[Graph]]]]],
     FilterRules[{opts}, Options[MultiTokenEventGraph]]
 ]
 
 MultiProp[multi_, "EvolutionCausalGraph", n_Integer : 1, opts___] := EvolutionCausalGraph[
-    multi["CausalGraph", n, FilterRules[{opts}, FilterRules[Options[EvolutionGraph], Except[Options[Graph]]]]],
+    multi["CausalGraph", n, FilterRules[{opts}, FilterRules[{Options[EvolutionGraph], Options[CausalGraph]}, Except[Options[Graph]]]]],
     FilterRules[{opts}, Options[EvolutionCausalGraph]]
 ]
 
