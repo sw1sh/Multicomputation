@@ -499,7 +499,7 @@ WIHypergraphToLinkedHypergraph[hg_ ? HypergraphQ] := Block[{vertices, edges},
 	vertices = Reap[
 		edges = MapIndexed[
 			Replace[#1, Labeled[vs_, {_, edgeLabel_}] :>
-				{\[FormalE][#2[[1]]], edgeLabel, Splice @ Replace[vs, Labeled[v_, l_] :> (Sow[{v, l}]; v), {1}]}] &,
+				{\[FormalE][#2[[1]]], edgeLabel, Splice @ Replace[vs, Labeled[Labeled[v_, _] | v_, l_] :> (Sow[{v, l}]; v), {1}]}] &,
 			ToLabeledEdges[hg]
 		]
 	][[2]];
